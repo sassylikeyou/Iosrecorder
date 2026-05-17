@@ -1,0 +1,30 @@
+name: Run Google Antigravity Agent
+on:
+  workflow_dispatch: # Allows you to start the agent manually with a button click
+
+jobs:
+  antigravity-job:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository Code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Initialize and Boot Antigravity Agent Swarm
+        run: |
+          # 1. Initialize a new project context and install the core DNA rules
+          npx antigravity-ide my-mobile-app
+          
+          # 2. Open up the workspace directory
+          cd my-mobile-app
+          
+          # 3. Trigger the validation check to verify all agent core skills are loaded
+          npx antigravity-ide validate
+          
+          # 4. Fire up the execution manager background logic
+          # Note: We run it with 'timeout' so the action doesn't hang forever in the background
+          timeout 10m npx antigravity-ide manager || true
