@@ -29,7 +29,16 @@ class RecorderTileService : TileService() {
             val intent = Intent(this, RequestActivity::class.java).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
             }
-            startActivityAndCollapse(intent)
+            if (Build.VERSION.SDK_INT >= 34) {
+                val pendingIntent = android.app.PendingIntent.getActivity(
+                    this, 0, intent,
+                    android.app.PendingIntent.FLAG_IMMUTABLE or android.app.PendingIntent.FLAG_UPDATE_CURRENT
+                )
+                startActivityAndCollapse(pendingIntent)
+            } else {
+                @Suppress("DEPRECATION")
+                startActivityAndCollapse(intent)
+            }
         }
         updateTile()
     }

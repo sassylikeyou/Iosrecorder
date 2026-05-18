@@ -2,22 +2,26 @@ package com.example.screenrecorder
 
 import android.app.Activity
 import android.content.Intent
-import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
 import android.net.Uri
 import android.os.Bundle
-import android.widget.Button
+import android.view.LayoutInflater
+import android.view.View
+import android.widget.FrameLayout
+import android.widget.LinearLayout
 import android.widget.TextView
+import android.widget.ImageView
+import android.widget.Switch
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
-
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import android.os.Build
-import android.widget.TableRow
 import androidx.appcompat.app.AlertDialog
+import android.graphics.Color
+import android.graphics.drawable.GradientDrawable
 
 class MainActivity : AppCompatActivity() {
 
@@ -25,6 +29,15 @@ class MainActivity : AppCompatActivity() {
     private lateinit var projectionManager: MediaProjectionManager
 
     private val PERMISSION_REQ_CODE = 1001
+
+    private lateinit var container: FrameLayout
+    private lateinit var tabRecord: LinearLayout
+    private lateinit var tabLibrary: LinearLayout
+    private lateinit var tabSettings: LinearLayout
+
+    private lateinit var viewRecord: View
+    private lateinit var viewLibrary: View
+    private lateinit var viewSettings: View
 
     private val captureIntentLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK && result.data != null) {
@@ -45,77 +58,250 @@ class MainActivity : AppCompatActivity() {
         settingsRepository = SettingsRepository(this)
         projectionManager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
 
-        updateSummary()
+        container = findViewById(R.id.fragment_container)
+        tabRecord = findViewById(R.id.tab_record)
+        tabLibrary = findViewById(R.id.tab_library)
+        tabSettings = findViewById(R.id.tab_settings)
 
-        findViewById<android.widget.FrameLayout>(R.id.btn_record_container).setOnClickListener {
+        viewRecord = layoutInflater.inflate(R.layout.fragment_record, container, false)
+        viewLibrary = layoutInflater.inflate(R.layout.fragment_library, container, false)
+        viewSettings = layoutInflater.inflate(R.layout.fragment_settings, container, false)
+
+        container.addView(viewRecord)
+        container.addView(viewLibrary)
+        container.addView(viewSettings)
+
+        tabRecord.setOnClickListener { switchTab(0) }
+        tabLibrary.setOnClickListener { switchTab(1) }
+        tabSettings.setOnClickListener { switchTab(2) }
+
+        setupRecordView()
+        setupSettingsView()
+        setupLibraryView()
+
+        switchTab(0)
+    }
+
+    private fun switchTab(index: Int) {
+        viewRecord.visibility = if (index == 0) View.VISIBLE else View.GONE
+        viewLibrary.visibility = if (index == 1) View.VISIBLE else View.GONE
+        viewSettings.visibility = if (index == 2) View.VISIBLE else View.GONE
+
+        val colorActive = Color.parseColor("#FF3B30")
+        val colorInactive = Color.parseColor("#8E8E93")
+
+        findViewById<ImageView>(R.id.icon_record).setColorFilter(if (index == 0) colorActive else colorInactive)
+        findViewById<TextView>(R.id.text_record).setTextColor(if (index == 0) colorActive else colorInactive)
+        findViewById<TextView>(R.id.text_record).typeface = if (index == 0) android.graphics.Typeface.DEFAULT_BOLD else android.graphics.Typeface.DEFAULT
+
+        findViewById<ImageView>(R.id.icon_library).setColorFilter(if (index == 1) colorActive else colorInactive)
+        findViewById<TextView>(R.id.text_library).setTextColor(if (index == 1) colorActive else colorInactive)
+        findViewById<TextView>(R.id.text_library).typeface = if (index == 1) android.graphics.Typeface.DEFAULT_BOLD else android.graphics.Typeface.DEFAULT
+
+        findViewById<ImageView>(R.id.icon_settings).setColorFilter(if (index == 2) colorActive else colorInactive)
+        findViewById<TextView>(R.id.text_settings).setTextColor(if (index == 2) colorActive else colorInactive)
+        findViewById<TextView>(R.id.text_settings).typeface = if (index == 2) android.graphics.Typeface.DEFAULT_BOLD else android.graphics.Typeface.DEFAULT
+
+        if (index == 0) updateRecordUI()
+        if (index == 1) loadLibrary()
+        if (index == 2) updateSettingsUI()
+    }
+
+    private fun setupRecordView() {
+        viewRecord.findViewById<FrameLayout>(R.id.btn_record).setOnClickListener {
             checkPermissionsAndStart()
         }
-
-        setupPreferenceClicks()
+        val btnMic = viewRecord.findViewById<LinearLayout>(R.id.btn_mic)
+        btnMic.setOnClickListener {
+            settingsRepository.audioSourceMode = if (settingsRepository.audioSourceMode == 0) 1 else 0
+            updateRecordUI()
+        }
     }
 
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        setIntent(intent)
-    }
-
-    private fun setupPreferenceClicks() {
-        findViewById<android.widget.LinearLayout>(R.id.row_resolution).setOnClickListener {
-            val options = arrayOf("720p", "1080p", "1440p")
+    private fun setupSettingsView() {
+        viewSettings.findViewById<View>(R.id.row_resolution).setOnClickListener {
+            val options = arrayOf("720p HD", "1080p HD", "1440p HD")
             val values = intArrayOf(720, 1080, 1440)
             val currentIndex = values.indexOf(settingsRepository.resolutionHeight).takeIf { it >= 0 } ?: 1
             AlertDialog.Builder(this).setSingleChoiceItems(options, currentIndex) { dialog, which ->
                 settingsRepository.resolutionHeight = values[which]
-                updateSummary()
+                updateSettingsUI()
                 dialog.dismiss()
             }.show()
         }
-
-        findViewById<android.widget.LinearLayout>(R.id.row_fps).setOnClickListener {
-            val options = arrayOf("30fps", "60fps", "90fps")
+        viewSettings.findViewById<View>(R.id.row_fps).setOnClickListener {
+            val options = arrayOf("30 fps", "60 fps", "90 fps")
             val values = intArrayOf(30, 60, 90)
             val currentIndex = values.indexOf(settingsRepository.frameRate).takeIf { it >= 0 } ?: 1
             AlertDialog.Builder(this).setSingleChoiceItems(options, currentIndex) { dialog, which ->
                 settingsRepository.frameRate = values[which]
-                updateSummary()
+                updateSettingsUI()
                 dialog.dismiss()
             }.show()
         }
-
-        findViewById<android.widget.LinearLayout>(R.id.row_bitrate).setOnClickListener {
+        viewSettings.findViewById<View>(R.id.row_bitrate).setOnClickListener {
             val options = arrayOf("5 Mbps", "8 Mbps", "12 Mbps", "16 Mbps")
             val values = intArrayOf(5000000, 8000000, 12000000, 16000000)
             val currentIndex = values.indexOf(settingsRepository.videoBitrate).takeIf { it >= 0 } ?: 2
             AlertDialog.Builder(this).setSingleChoiceItems(options, currentIndex) { dialog, which ->
                 settingsRepository.videoBitrate = values[which]
-                updateSummary()
+                updateSettingsUI()
                 dialog.dismiss()
             }.show()
         }
-
-        findViewById<android.widget.LinearLayout>(R.id.row_orientation).setOnClickListener {
-            val options = arrayOf("Auto", "Portrait", "Landscape")
-            val currentIndex = settingsRepository.orientationMode
+        viewSettings.findViewById<View>(R.id.row_format).setOnClickListener {
+            val options = arrayOf("MP4", "MKV")
+            val currentIndex = if (settingsRepository.outputFormat == "MP4") 0 else 1
             AlertDialog.Builder(this).setSingleChoiceItems(options, currentIndex) { dialog, which ->
-                settingsRepository.orientationMode = which
-                updateSummary()
+                settingsRepository.outputFormat = options[which]
+                updateSettingsUI()
                 dialog.dismiss()
             }.show()
         }
 
-        findViewById<android.widget.LinearLayout>(R.id.row_advanced).setOnClickListener {
-            startActivity(Intent(this, SettingsActivity::class.java))
+        val switchMic = viewSettings.findViewById<Switch>(R.id.switch_mic)
+        switchMic.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked) {
+                settingsRepository.audioSourceMode = if (viewSettings.findViewById<Switch>(R.id.switch_sys_audio).isChecked) 3 else 1
+            } else {
+                settingsRepository.audioSourceMode = if (viewSettings.findViewById<Switch>(R.id.switch_sys_audio).isChecked) 2 else 0
+            }
+            updateSettingsUI()
+        }
+        
+        val switchSys = viewSettings.findViewById<Switch>(R.id.switch_sys_audio)
+        switchSys.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked) {
+                settingsRepository.audioSourceMode = if (viewSettings.findViewById<Switch>(R.id.switch_mic).isChecked) 3 else 2
+            } else {
+                settingsRepository.audioSourceMode = if (viewSettings.findViewById<Switch>(R.id.switch_mic).isChecked) 1 else 0
+            }
+            updateSettingsUI()
         }
     }
 
-    private fun updateSummary() {
-        val txtSummary = findViewById<TextView>(R.id.txt_summary)
-        txtSummary.text = settingsRepository.getSummary()
+    private fun setupLibraryView() {
+        val recyclerView = viewLibrary.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.recycler_view)
+        recyclerView.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(this)
+    }
 
-        findViewById<TextView>(R.id.val_resolution).text = "${settingsRepository.resolutionHeight}p"
-        findViewById<TextView>(R.id.val_fps).text = "${settingsRepository.frameRate}fps"
-        findViewById<TextView>(R.id.val_bitrate).text = "${settingsRepository.videoBitrate / 1000000} Mbps"
-        findViewById<TextView>(R.id.val_orientation).text = arrayOf("Auto", "Portrait", "Landscape")[settingsRepository.orientationMode]
+    private fun loadLibrary() {
+        val txtEmpty = viewLibrary.findViewById<TextView>(R.id.txt_empty)
+        val resolver = contentResolver
+        val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            android.provider.MediaStore.Video.Media.getContentUri(android.provider.MediaStore.VOLUME_EXTERNAL_PRIMARY)
+        } else {
+            android.provider.MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+        }
+        val projection = arrayOf(
+            android.provider.MediaStore.Video.Media._ID,
+            android.provider.MediaStore.Video.Media.DISPLAY_NAME,
+            android.provider.MediaStore.Video.Media.DURATION,
+            android.provider.MediaStore.Video.Media.SIZE
+        )
+        val query = resolver.query(
+            collection,
+            projection,
+            android.provider.MediaStore.Video.Media.DATA + " like ? ",
+            arrayOf("%ScreenRecorder%"),
+            android.provider.MediaStore.Video.Media.DATE_ADDED + " DESC"
+        )
+        val files = mutableListOf<VideoFile>()
+        query?.use { cursor ->
+            val idColumn = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Video.Media._ID)
+            val nameColumn = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Video.Media.DISPLAY_NAME)
+            val sizeColumn = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Video.Media.SIZE)
+            while (cursor.moveToNext()) {
+                val id = cursor.getLong(idColumn)
+                val name = cursor.getString(nameColumn)
+                val size = cursor.getLong(sizeColumn)
+                val contentUri: Uri = android.content.ContentUris.withAppendedId(android.provider.MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id)
+                files.add(VideoFile(contentUri, name, size))
+            }
+        }
+        if (files.isEmpty()) {
+            txtEmpty.visibility = View.VISIBLE
+        } else {
+            txtEmpty.visibility = View.GONE
+        }
+        val recyclerView = viewLibrary.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.recycler_view)
+        recyclerView.adapter = LibraryAdapter(files) { file ->
+            val intent = Intent(Intent.ACTION_VIEW, file.uri)
+            intent.setDataAndType(file.uri, "video/*")
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            startActivity(intent)
+        }
+    }
+
+    private fun updateRecordUI() {
+        val txtStatus = viewRecord.findViewById<TextView>(R.id.txt_status)
+        val circle = viewRecord.findViewById<View>(R.id.rec_circle)
+        
+        // stats
+        viewRecord.findViewById<TextView>(R.id.stat_res).text = "${settingsRepository.resolutionHeight}p"
+        viewRecord.findViewById<TextView>(R.id.stat_fps).text = "${settingsRepository.frameRate}"
+        viewRecord.findViewById<TextView>(R.id.stat_bit).text = "${settingsRepository.videoBitrate / 1000000} Mb"
+
+        val btnMic = viewRecord.findViewById<LinearLayout>(R.id.btn_mic)
+        if (settingsRepository.audioSourceMode == 1 || settingsRepository.audioSourceMode == 3) {
+            btnMic.setBackgroundResource(R.drawable.bg_quick_toggle_on)
+        } else {
+            btnMic.setBackgroundColor(Color.TRANSPARENT)
+        }
+
+        if (RecordingManager.isRecording) {
+            txtStatus.text = "Recording in progress..."
+            // Make the inner square to indicate stop
+            val shape = GradientDrawable()
+            shape.shape = GradientDrawable.RECTANGLE
+            shape.cornerRadius = 16f
+            shape.setColor(Color.WHITE)
+            circle.background = shape
+            
+            val params = circle.layoutParams
+            params.width = (24 * resources.displayMetrics.density).toInt()
+            params.height = (24 * resources.displayMetrics.density).toInt()
+            circle.layoutParams = params
+        } else {
+            txtStatus.text = "Tap to start recording"
+            // Make inner circle
+            val shape = GradientDrawable()
+            shape.shape = GradientDrawable.OVAL
+            shape.setColor(Color.WHITE)
+            circle.background = shape
+            
+            val params = circle.layoutParams
+            params.width = (30 * resources.displayMetrics.density).toInt()
+            params.height = (30 * resources.displayMetrics.density).toInt()
+            circle.layoutParams = params
+        }
+    }
+    
+    private fun updateSettingsUI() {
+        viewSettings.findViewById<TextView>(R.id.val_resolution).text = "${settingsRepository.resolutionHeight}p HD"
+        viewSettings.findViewById<TextView>(R.id.val_fps).text = "${settingsRepository.frameRate} fps"
+        viewSettings.findViewById<TextView>(R.id.val_bitrate).text = "${settingsRepository.videoBitrate / 1000000} Mbps"
+        viewSettings.findViewById<TextView>(R.id.val_format).text = settingsRepository.outputFormat
+
+        val source = settingsRepository.audioSourceMode
+        viewSettings.findViewById<Switch>(R.id.switch_mic).setOnCheckedChangeListener(null)
+        viewSettings.findViewById<Switch>(R.id.switch_sys_audio).setOnCheckedChangeListener(null)
+        
+        viewSettings.findViewById<Switch>(R.id.switch_mic).isChecked = (source == 1 || source == 3)
+        viewSettings.findViewById<Switch>(R.id.switch_sys_audio).isChecked = (source == 2 || source == 3)
+        
+        setupSettingsView() // reattach listeners
+    }
+
+    override fun onResume() {
+        super.onResume()
+        updateRecordUI()
+        updateSettingsUI()
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
     }
 
     private fun checkPermissionsAndStart() {
@@ -144,7 +330,6 @@ class MainActivity : AppCompatActivity() {
                 proceedRecording()
             } else {
                 android.widget.Toast.makeText(this, "Permissions required to record.", android.widget.Toast.LENGTH_SHORT).show()
-                // Force audio off if they denied it? No, just fail it safely.
             }
         }
     }
@@ -154,46 +339,6 @@ class MainActivity : AppCompatActivity() {
             stopRecording()
         } else {
             startRecordingFlow()
-        }
-    }
-
-    override fun onResume() {
-        super.onResume()
-        updateSummary()
-        updateRecordUI()
-    }
-
-    private fun updateRecordUI() {
-        val innerView = findViewById<android.view.View>(R.id.btn_record_inner)
-        val txtStatus = findViewById<TextView>(R.id.txt_status)
-        if (RecordingManager.isRecording) {
-            txtStatus.text = "RECORDING"
-            txtStatus.setTextColor(ContextCompat.getColor(this, R.color.red_record))
-            // Make the inner square to indicate stop
-            val shape = android.graphics.drawable.GradientDrawable()
-            shape.shape = android.graphics.drawable.GradientDrawable.RECTANGLE
-            shape.cornerRadius = 16f
-            shape.setColor(ContextCompat.getColor(this, R.color.red_record))
-            innerView.background = shape
-            
-            val params = innerView.layoutParams as android.widget.FrameLayout.LayoutParams
-            params.width = 64
-            params.height = 64
-            innerView.layoutParams = params
-        } else {
-            txtStatus.text = "READY TO CAPTURE"
-            txtStatus.setTextColor(ContextCompat.getColor(this, R.color.gray_light))
-            // Make inner circle
-            val shape = android.graphics.drawable.GradientDrawable()
-            shape.shape = android.graphics.drawable.GradientDrawable.OVAL
-            shape.setColor(ContextCompat.getColor(this, R.color.red_record))
-            innerView.background = shape
-            
-            val params = innerView.layoutParams as android.widget.FrameLayout.LayoutParams
-            val size = (140 * resources.displayMetrics.density).toInt()
-            params.width = size
-            params.height = size
-            innerView.layoutParams = params
         }
     }
 
@@ -208,6 +353,36 @@ class MainActivity : AppCompatActivity() {
         }
         startService(serviceIntent)
         updateRecordUI()
-        android.widget.Toast.makeText(this, "Recording saved to Movies/ScreenRecorder", android.widget.Toast.LENGTH_LONG).show()
+        android.widget.Toast.makeText(this, "Recording finished", android.widget.Toast.LENGTH_LONG).show()
     }
+}
+
+data class VideoFile(val uri: Uri, val name: String, val size: Long)
+
+class LibraryAdapter(
+    private val files: List<VideoFile>,
+    private val onClick: (VideoFile) -> Unit
+) : androidx.recyclerview.widget.RecyclerView.Adapter<LibraryAdapter.ViewHolder>() {
+
+    class ViewHolder(view: View) : androidx.recyclerview.widget.RecyclerView.ViewHolder(view) {
+        val title: TextView = view.findViewById(android.R.id.text1)
+        val subtitle: TextView = view.findViewById(android.R.id.text2)
+    }
+
+    override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int): ViewHolder {
+        val view = android.view.LayoutInflater.from(parent.context)
+            .inflate(android.R.layout.simple_list_item_2, parent, false)
+        return ViewHolder(view)
+    }
+
+    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+        val file = files[position]
+        holder.title.text = file.name
+        holder.title.setTextColor(Color.BLACK)
+        holder.subtitle.text = "${file.size / (1024 * 1024)} MB"
+        holder.subtitle.setTextColor(Color.GRAY)
+        holder.itemView.setOnClickListener { onClick(file) }
+    }
+
+    override fun getItemCount() = files.size
 }
