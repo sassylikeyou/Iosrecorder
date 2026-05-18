@@ -42,7 +42,10 @@ object RecordingManager {
         return try {
             mediaProjection?.registerCallback(object : MediaProjection.Callback() {
                 override fun onStop() {
-                    // Handle projection stopped externally
+                    val stopIntent = android.content.Intent(context, RecordingService::class.java).apply {
+                        action = RecordingService.ACTION_STOP
+                    }
+                    context.startService(stopIntent)
                 }
             }, android.os.Handler(android.os.Looper.getMainLooper()))
             
@@ -156,32 +159,48 @@ object RecordingManager {
     }
 
     private fun getVideoWidth(context: Context, settings: SettingsRepository): Int {
-        val baseShort = settings.resolutionHeight
-        val baseLong = (baseShort * 16) / 9
-        val isPortrait = context.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT
+        val dm = context.resources.displayMetrics
+        val w = dm.widthPixels
+        val h = dm.heightPixels
+        val isPortraitDevice = w < h
         
-        val width = if (settings.orientationMode == 1) { // Portrait
-           baseShort
-        } else if (settings.orientationMode == 2) { // Landscape
-           baseLong
-        } else { // Auto
-           if (isPortrait) baseShort else baseLong
+        val mWidth = Math.min(w, h)
+        val mHeight = Math.max(w, h)
+        val aspectRatio = mHeight.toFloat() / mWidth.toFloat()
+        
+        val baseShort = settings.resolutionHeight
+        val baseLong = (baseShort * aspectRatio).toInt()
+        
+        val isPortrait = when (settings.orientationMode) {
+            1 -> true
+            2 -> false
+            else -> isPortraitDevice
         }
+        
+        var width = if (isPortrait) baseShort else baseLong
         return width - (width % 2) // Ensure even
     }
 
     private fun getVideoHeight(context: Context, settings: SettingsRepository): Int {
-        val baseShort = settings.resolutionHeight
-        val baseLong = (baseShort * 16) / 9
-        val isPortrait = context.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT
+        val dm = context.resources.displayMetrics
+        val w = dm.widthPixels
+        val h = dm.heightPixels
+        val isPortraitDevice = w < h
         
-        val height = if (settings.orientationMode == 1) { // Portrait
-           baseLong
-        } else if (settings.orientationMode == 2) { // Landscape
-           baseShort
-        } else { // Auto
-           if (isPortrait) baseLong else baseShort
+        val mWidth = Math.min(w, h)
+        val mHeight = Math.max(w, h)
+        val aspectRatio = mHeight.toFloat() / mWidth.toFloat()
+        
+        val baseShort = settings.resolutionHeight
+        val baseLong = (baseShort * aspectRatio).toInt()
+        
+        val isPortrait = when (settings.orientationMode) {
+            1 -> true
+            2 -> false
+            else -> isPortraitDevice
         }
+        
+        var height = if (isPortrait) baseLong else baseShort
         return height - (height % 2) // Ensure even
     }
 

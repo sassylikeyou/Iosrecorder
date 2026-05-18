@@ -28,6 +28,7 @@ class RecorderTileService : TileService() {
             // But Android 14+ requires intent prompt per session.
             val intent = Intent(this, MainActivity::class.java).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                putExtra("start_recording", true)
             }
             startActivityAndCollapse(intent)
         }
