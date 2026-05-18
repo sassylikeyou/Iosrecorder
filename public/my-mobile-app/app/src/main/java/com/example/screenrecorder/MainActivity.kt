@@ -39,6 +39,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var viewLibrary: View
     private lateinit var viewSettings: View
 
+    private var currentTabIndex = -1
+    private var pulseAnimator: android.animation.ObjectAnimator? = null
+
     private val captureIntentLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK && result.data != null) {
             val serviceIntent = Intent(this, RecordingService::class.java).apply {
@@ -83,9 +86,41 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun switchTab(index: Int) {
-        viewRecord.visibility = if (index == 0) View.VISIBLE else View.GONE
-        viewLibrary.visibility = if (index == 1) View.VISIBLE else View.GONE
-        viewSettings.visibility = if (index == 2) View.VISIBLE else View.GONE
+        if (currentTabIndex == index) return
+        val isForward = index > currentTabIndex
+        currentTabIndex = index
+        
+        val targetView = when (index) {
+            0 -> viewRecord
+            1 -> viewLibrary
+            else -> viewSettings
+        }
+
+        listOf(viewRecord, viewLibrary, viewSettings).forEach { view ->
+            if (view == targetView) {
+                if (view.visibility != View.VISIBLE) {
+                    view.visibility = View.VISIBLE
+                    view.alpha = 0f
+                    view.translationX = if (isForward) 150f else -150f
+                    view.animate()
+                        .alpha(1f)
+                        .translationX(0f)
+                        .setDuration(300)
+                        .setInterpolator(android.view.animation.DecelerateInterpolator())
+                        .start()
+                }
+            } else {
+                if (view.visibility == View.VISIBLE) {
+                    view.animate()
+                        .alpha(0f)
+                        .translationX(if (isForward) -150f else 150f)
+                        .setDuration(300)
+                        .setInterpolator(android.view.animation.AccelerateInterpolator())
+                        .withEndAction { view.visibility = View.GONE }
+                        .start()
+                }
+            }
+        }
 
         val colorActive = Color.parseColor("#8B5CF6")
         val colorInactive = Color.parseColor("#8E8E93")
@@ -233,6 +268,31 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun startPulseAnimation() {
+        val halo = viewRecord.findViewById<View>(R.id.rec_halo)
+        val btn = viewRecord.findViewById<View>(R.id.btn_record)
+        if (pulseAnimator == null) {
+            val scaleX = android.animation.PropertyValuesHolder.ofFloat(View.SCALE_X, 1f, 1.15f)
+            val scaleY = android.animation.PropertyValuesHolder.ofFloat(View.SCALE_Y, 1f, 1.15f)
+            pulseAnimator = android.animation.ObjectAnimator.ofPropertyValuesHolder(halo, scaleX, scaleY).apply {
+                duration = 800
+                repeatCount = android.animation.ObjectAnimator.INFINITE
+                repeatMode = android.animation.ObjectAnimator.REVERSE
+                interpolator = android.view.animation.AccelerateDecelerateInterpolator()
+            }
+        }
+        pulseAnimator?.start()
+        btn.animate().scaleX(1.1f).scaleY(1.1f).setDuration(300).start()
+    }
+
+    private fun stopPulseAnimation() {
+        pulseAnimator?.cancel()
+        val halo = viewRecord.findViewById<View>(R.id.rec_halo)
+        val btn = viewRecord.findViewById<View>(R.id.btn_record)
+        halo.animate().scaleX(1f).scaleY(1f).setDuration(300).start()
+        btn.animate().scaleX(1f).scaleY(1f).setDuration(300).start()
+    }
+
     private fun updateRecordUI() {
         val txtStatus = viewRecord.findViewById<TextView>(R.id.txt_status)
         val circle = viewRecord.findViewById<View>(R.id.rec_circle)
@@ -243,12 +303,30 @@ class MainActivity : AppCompatActivity() {
         viewRecord.findViewById<TextView>(R.id.stat_fps).text = "${settingsRepository.frameRate}"
         viewRecord.findViewById<TextView>(R.id.stat_bit).text = "${settingsRepository.videoBitrate / 1000000} Mbps"
 
+        val statsContainer = viewRecord.findViewById<View>(R.id.stats_row_container)
+
         if (RecordingManager.isRecording) {
             txtStatus.text = "Recording in progress..."
             txtRec?.text = "STOP"
+            startPulseAnimation()
+            
+            statsContainer.animate()
+                .alpha(0.5f)
+                .scaleX(0.9f)
+                .scaleY(0.9f)
+                .setDuration(400)
+                .start()
         } else {
             txtStatus.text = "✦ Tap the button to start recording"
             txtRec?.text = "REC"
+            stopPulseAnimation()
+            
+            statsContainer.animate()
+                .alpha(1f)
+                .scaleX(1f)
+                .scaleY(1f)
+                .setDuration(400)
+                .start()
         }
     }
     
