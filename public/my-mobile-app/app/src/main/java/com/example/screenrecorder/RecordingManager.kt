@@ -159,7 +159,10 @@ object RecordingManager {
     }
 
     private fun getVideoWidth(context: Context, settings: SettingsRepository): Int {
-        val dm = context.resources.displayMetrics
+        val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
+        val dm = android.util.DisplayMetrics()
+        windowManager.defaultDisplay.getRealMetrics(dm)
+        
         val w = dm.widthPixels
         val h = dm.heightPixels
         val isPortraitDevice = w < h
@@ -178,11 +181,14 @@ object RecordingManager {
         }
         
         var width = if (isPortrait) baseShort else baseLong
-        return width - (width % 2) // Ensure even
+        return width - (width % 16) // Multiple of 16 for encoder compatibility
     }
 
     private fun getVideoHeight(context: Context, settings: SettingsRepository): Int {
-        val dm = context.resources.displayMetrics
+        val windowManager = context.getSystemService(Context.WINDOW_SERVICE) as android.view.WindowManager
+        val dm = android.util.DisplayMetrics()
+        windowManager.defaultDisplay.getRealMetrics(dm)
+        
         val w = dm.widthPixels
         val h = dm.heightPixels
         val isPortraitDevice = w < h
@@ -201,7 +207,7 @@ object RecordingManager {
         }
         
         var height = if (isPortrait) baseLong else baseShort
-        return height - (height % 2) // Ensure even
+        return height - (height % 16) // Multiple of 16 for encoder compatibility
     }
 
     private fun releaseResources() {
