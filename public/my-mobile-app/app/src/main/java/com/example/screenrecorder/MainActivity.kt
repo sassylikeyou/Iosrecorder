@@ -87,7 +87,7 @@ class MainActivity : AppCompatActivity() {
         viewLibrary.visibility = if (index == 1) View.VISIBLE else View.GONE
         viewSettings.visibility = if (index == 2) View.VISIBLE else View.GONE
 
-        val colorActive = Color.parseColor("#FF3B30")
+        val colorActive = Color.parseColor("#8B5CF6")
         val colorInactive = Color.parseColor("#8E8E93")
 
         findViewById<ImageView>(R.id.icon_record).setColorFilter(if (index == 0) colorActive else colorInactive)
@@ -236,59 +236,31 @@ class MainActivity : AppCompatActivity() {
     private fun updateRecordUI() {
         val txtStatus = viewRecord.findViewById<TextView>(R.id.txt_status)
         val circle = viewRecord.findViewById<View>(R.id.rec_circle)
+        val txtRec = viewRecord.findViewById<TextView>(R.id.txt_rec)
         
         // stats
         viewRecord.findViewById<TextView>(R.id.stat_res).text = "${settingsRepository.resolutionHeight}p"
         viewRecord.findViewById<TextView>(R.id.stat_fps).text = "${settingsRepository.frameRate}"
-        viewRecord.findViewById<TextView>(R.id.stat_bit).text = "${settingsRepository.videoBitrate / 1000000} Mb"
-
-        val btnMic = viewRecord.findViewById<LinearLayout>(R.id.btn_mic)
-        if (settingsRepository.audioSourceMode == 1 || settingsRepository.audioSourceMode == 3) {
-            btnMic.setBackgroundResource(R.drawable.bg_quick_toggle_on)
-        } else {
-            btnMic.setBackgroundColor(Color.TRANSPARENT)
-        }
+        viewRecord.findViewById<TextView>(R.id.stat_bit).text = "${settingsRepository.videoBitrate / 1000000} Mbps"
 
         if (RecordingManager.isRecording) {
             txtStatus.text = "Recording in progress..."
-            // Make the inner square to indicate stop
-            val shape = GradientDrawable()
-            shape.shape = GradientDrawable.RECTANGLE
-            shape.cornerRadius = 16f
-            shape.setColor(Color.WHITE)
-            circle.background = shape
-            
-            val params = circle.layoutParams
-            params.width = (24 * resources.displayMetrics.density).toInt()
-            params.height = (24 * resources.displayMetrics.density).toInt()
-            circle.layoutParams = params
+            txtRec?.text = "STOP"
         } else {
-            txtStatus.text = "Tap to start recording"
-            // Make inner circle
-            val shape = GradientDrawable()
-            shape.shape = GradientDrawable.OVAL
-            shape.setColor(Color.WHITE)
-            circle.background = shape
-            
-            val params = circle.layoutParams
-            params.width = (30 * resources.displayMetrics.density).toInt()
-            params.height = (30 * resources.displayMetrics.density).toInt()
-            circle.layoutParams = params
+            txtStatus.text = "✦ Tap the button to start recording"
+            txtRec?.text = "REC"
         }
     }
     
     private fun updateSettingsUI() {
-        viewSettings.findViewById<TextView>(R.id.val_resolution).text = "${settingsRepository.resolutionHeight}p HD"
-        viewSettings.findViewById<TextView>(R.id.val_fps).text = "${settingsRepository.frameRate} fps"
+        viewSettings.findViewById<TextView>(R.id.val_resolution).text = "${settingsRepository.resolutionHeight}p (FHD)"
+        viewSettings.findViewById<TextView>(R.id.val_fps).text = "${settingsRepository.frameRate} FPS"
         viewSettings.findViewById<TextView>(R.id.val_bitrate).text = "${settingsRepository.videoBitrate / 1000000} Mbps"
-        viewSettings.findViewById<TextView>(R.id.val_format).text = settingsRepository.outputFormat
 
         val source = settingsRepository.audioSourceMode
         viewSettings.findViewById<Switch>(R.id.switch_mic).setOnCheckedChangeListener(null)
-        viewSettings.findViewById<Switch>(R.id.switch_sys_audio).setOnCheckedChangeListener(null)
         
         viewSettings.findViewById<Switch>(R.id.switch_mic).isChecked = (source == 1 || source == 3)
-        viewSettings.findViewById<Switch>(R.id.switch_sys_audio).isChecked = (source == 2 || source == 3)
         
         setupSettingsView() // reattach listeners
     }
