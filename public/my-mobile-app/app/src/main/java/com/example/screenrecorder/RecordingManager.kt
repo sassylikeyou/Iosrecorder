@@ -72,7 +72,7 @@ object RecordingManager {
         recorder.setVideoSource(MediaRecorder.VideoSource.SURFACE)
         
         val format = if (settings.outputFormat == "MKV" && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            MediaRecorder.OutputFormat.MUXER_OUTPUT_WEBM
+            MediaRecorder.OutputFormat.WEBM
         } else {
             MediaRecorder.OutputFormat.MPEG_4
         }
