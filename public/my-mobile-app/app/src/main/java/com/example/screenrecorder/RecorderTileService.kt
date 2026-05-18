@@ -26,9 +26,8 @@ class RecorderTileService : TileService() {
             // Start recording (needs activity to get projection token if Android 14+)
             // For older versions or if token cached, we could start directly
             // But Android 14+ requires intent prompt per session.
-            val intent = Intent(this, MainActivity::class.java).apply {
+            val intent = Intent(this, RequestActivity::class.java).apply {
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK)
-                putExtra("start_recording", true)
             }
             startActivityAndCollapse(intent)
         }

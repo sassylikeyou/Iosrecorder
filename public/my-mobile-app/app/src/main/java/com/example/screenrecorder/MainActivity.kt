@@ -52,18 +52,11 @@ class MainActivity : AppCompatActivity() {
         }
 
         setupPreferenceClicks()
-
-        if (intent?.getBooleanExtra("start_recording", false) == true) {
-            checkPermissionsAndStart()
-        }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        if (intent.getBooleanExtra("start_recording", false)) {
-            checkPermissionsAndStart()
-        }
     }
 
     private fun setupPreferenceClicks() {

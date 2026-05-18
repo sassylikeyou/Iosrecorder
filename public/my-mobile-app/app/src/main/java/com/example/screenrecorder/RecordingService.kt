@@ -64,6 +64,8 @@ class RecordingService : Service() {
                 } else {
                     stopForeground(true)
                 }
+                val manager = getSystemService(NotificationManager::class.java)
+                manager?.cancel(NOTIFICATION_ID)
                 stopSelf()
             }
         }
