@@ -65,9 +65,11 @@ object RecordingManager {
         val recorder = mediaRecorder ?: return
 
         // Audio setup
-        if (settings.audioSourceMode == 1 || settings.audioSourceMode == 3) {
-            recorder.setAudioSource(MediaRecorder.AudioSource.MIC)
-        }
+        when (settings.audioSourceMode) {
+            1 -> recorder.setAudioSource(MediaRecorder.AudioSource.MIC)
+            2 -> recorder.setAudioSource(MediaRecorder.AudioSource.DEFAULT) // Simulating Internal
+            3 -> recorder.setAudioSource(MediaRecorder.AudioSource.MIC) // Simulating Both
+        } // 0 = None
 
         recorder.setVideoSource(MediaRecorder.VideoSource.SURFACE)
         
@@ -84,19 +86,18 @@ object RecordingManager {
         val encoder = if (settings.videoEncoder == "H265") MediaRecorder.VideoEncoder.HEVC else MediaRecorder.VideoEncoder.H264
         recorder.setVideoEncoder(encoder)
         
-        if (settings.audioSourceMode == 1 || settings.audioSourceMode == 3) {
+        if (settings.audioSourceMode != 0) {
             recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
         }
 
-        // Use standard 16:9 ratio, handled by orientation settings
-        recorder.setVideoSize(getScreenWidth(settings), settings.resolutionHeight)
+        recorder.setVideoSize(getVideoWidth(settings), getVideoHeight(settings))
         recorder.setVideoEncodingBitRate(settings.videoBitrate)
         recorder.setVideoFrameRate(settings.frameRate)
     }
 
     private fun createVirtualDisplay(settings: SettingsRepository): VirtualDisplay? {
-        val width = getScreenWidth(settings)
-        val height = settings.resolutionHeight
+        val width = getVideoWidth(settings)
+        val height = getVideoHeight(settings)
         val dpi = 300 // Standard fallback DPI
 
         return mediaProjection?.createVirtualDisplay(
@@ -107,10 +108,18 @@ object RecordingManager {
         )
     }
 
-    private fun getScreenWidth(settings: SettingsRepository): Int {
-        // Simple 16:9 aspect ratio calculation 
-        // In a real app, use WindowManager to get exact screen bounds based on orientation
-        return (settings.resolutionHeight * 9) / 16
+    private fun getVideoWidth(settings: SettingsRepository): Int {
+        val baseShort = settings.resolutionHeight
+        val baseLong = (baseShort * 16) / 9
+        val width = if (settings.orientationMode == 2) baseLong else baseShort
+        return width - (width % 2) // Ensure even
+    }
+
+    private fun getVideoHeight(settings: SettingsRepository): Int {
+        val baseShort = settings.resolutionHeight
+        val baseLong = (baseShort * 16) / 9
+        val height = if (settings.orientationMode == 2) baseShort else baseLong
+        return height - (height % 2) // Ensure even
     }
 
     private fun getOutputFile(context: Context, settings: SettingsRepository): File {

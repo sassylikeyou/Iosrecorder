@@ -30,7 +30,7 @@ class SettingsActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_settings) // Assume basic linear layout exists
+        setContentView(R.layout.activity_settings)
         
         settingsRepository = SettingsRepository(this)
 
@@ -41,8 +41,24 @@ class SettingsActivity : AppCompatActivity() {
             folderPickerLauncher.launch(intent)
         }
 
-        // Implementation of dropdowns and sliders for other settings would go here,
-        // wired directly to `settingsRepository` properties.
+        val rgAudio = findViewById<android.widget.RadioGroup>(R.id.rg_audio_source)
+        when (settingsRepository.audioSourceMode) {
+            0 -> rgAudio.check(R.id.rb_audio_none)
+            1 -> rgAudio.check(R.id.rb_audio_mic)
+            2 -> rgAudio.check(R.id.rb_audio_internal)
+            3 -> rgAudio.check(R.id.rb_audio_both)
+        }
+
+        rgAudio.setOnCheckedChangeListener { _, checkedId ->
+            val mode = when (checkedId) {
+                R.id.rb_audio_none -> 0
+                R.id.rb_audio_mic -> 1
+                R.id.rb_audio_internal -> 2
+                R.id.rb_audio_both -> 3
+                else -> 1
+            }
+            settingsRepository.audioSourceMode = mode
+        }
     }
 
     private fun updateFolderUI() {
