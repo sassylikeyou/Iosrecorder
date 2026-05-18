@@ -40,7 +40,7 @@ object RecordingManager {
         try {
             setupMediaRecorder(context, settings)
             mediaRecorder?.prepare()
-            virtualDisplay = createVirtualDisplay(settings)
+            virtualDisplay = createVirtualDisplay(context, settings)
             mediaRecorder?.start()
             isRecording = true
         } catch (e: Exception) {
@@ -110,15 +110,15 @@ object RecordingManager {
             recorder.setAudioSamplingRate(44100)
         }
 
-        recorder.setVideoSize(getVideoWidth(settings), getVideoHeight(settings))
+        recorder.setVideoSize(getVideoWidth(context, settings), getVideoHeight(context, settings))
         recorder.setVideoEncodingBitRate(settings.videoBitrate)
         recorder.setVideoFrameRate(settings.frameRate)
     }
 
-    private fun createVirtualDisplay(settings: SettingsRepository): VirtualDisplay? {
-        val width = getVideoWidth(settings)
-        val height = getVideoHeight(settings)
-        val dpi = 300 // Standard fallback DPI
+    private fun createVirtualDisplay(context: Context, settings: SettingsRepository): VirtualDisplay? {
+        val width = getVideoWidth(context, settings)
+        val height = getVideoHeight(context, settings)
+        val dpi = context.resources.displayMetrics.densityDpi
 
         return mediaProjection?.createVirtualDisplay(
             "ScreenRecorder",
@@ -128,16 +128,32 @@ object RecordingManager {
         )
     }
 
-    private fun getVideoWidth(settings: SettingsRepository): Int {
+    private fun getVideoWidth(context: Context, settings: SettingsRepository): Int {
+        val metrics = context.resources.displayMetrics
+        val screenWidth = metrics.widthPixels
+        val screenHeight = metrics.heightPixels
+        val mWidth = Math.min(screenWidth, screenHeight)
+        val mHeight = Math.max(screenWidth, screenHeight)
+        
+        val aspectRatio = mHeight.toFloat() / mWidth.toFloat()
+        
         val baseShort = settings.resolutionHeight
-        val baseLong = (baseShort * 16) / 9
+        val baseLong = (baseShort * aspectRatio).toInt()
         val width = if (settings.orientationMode == 2) baseLong else baseShort
         return width - (width % 2) // Ensure even
     }
 
-    private fun getVideoHeight(settings: SettingsRepository): Int {
+    private fun getVideoHeight(context: Context, settings: SettingsRepository): Int {
+        val metrics = context.resources.displayMetrics
+        val screenWidth = metrics.widthPixels
+        val screenHeight = metrics.heightPixels
+        val mWidth = Math.min(screenWidth, screenHeight)
+        val mHeight = Math.max(screenWidth, screenHeight)
+        
+        val aspectRatio = mHeight.toFloat() / mWidth.toFloat()
+        
         val baseShort = settings.resolutionHeight
-        val baseLong = (baseShort * 16) / 9
+        val baseLong = (baseShort * aspectRatio).toInt()
         val height = if (settings.orientationMode == 2) baseShort else baseLong
         return height - (height % 2) // Ensure even
     }
