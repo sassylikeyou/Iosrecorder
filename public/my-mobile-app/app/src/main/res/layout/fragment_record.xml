@@ -160,10 +160,28 @@
         </LinearLayout>
     </LinearLayout>
 
-    <!-- required for MainActivity compatibility -->
+    <!-- Required for MainActivity compatibility -->
     <LinearLayout
         android:id="@+id/btn_mic"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:visibility="gone" />
+
+    <!-- Countdown Overlay -->
+    <TextView
+        android:id="@+id/txt_countdown"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:text="3"
+        android:textColor="#FFFFFF"
+        android:textSize="120sp"
+        android:textStyle="bold"
+        android:background="#99000000"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:elevation="20dp"/>
 </androidx.constraintlayout.widget.ConstraintLayout>

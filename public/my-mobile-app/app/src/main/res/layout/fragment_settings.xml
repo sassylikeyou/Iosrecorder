@@ -59,11 +59,41 @@
             </LinearLayout>
             <View android:layout_width="match_parent" android:layout_height="0.5dp" android:background="#1E3C3C43" android:layout_marginStart="56dp"/>
 
+            <!-- Countdown Timer -->
+            <LinearLayout android:id="@+id/row_countdown" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:paddingHorizontal="16dp" android:paddingVertical="12dp" android:gravity="center_vertical" android:background="?actionBarItemBackground">
+                <ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@android:drawable/ic_menu_agenda" app:tint="#10B981"/>
+                <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Countdown" android:textColor="#000" android:textSize="17sp" android:layout_marginStart="12dp"/>
+                <TextView android:id="@+id/val_countdown" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="3s" android:textColor="#8E8E93" android:textSize="17sp" android:layout_marginEnd="4dp"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text=">" android:textColor="#C7C7CC" android:textSize="17sp"/>
+            </LinearLayout>
+            <View android:layout_width="match_parent" android:layout_height="0.5dp" android:background="#1E3C3C43" android:layout_marginStart="56dp"/>
+
             <!-- Bitrate -->
             <LinearLayout android:id="@+id/row_bitrate" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:paddingHorizontal="16dp" android:paddingVertical="12dp" android:gravity="center_vertical" android:background="?actionBarItemBackground">
                 <ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@android:drawable/ic_menu_sort_by_size" app:tint="#F97316"/>
                 <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Bitrate" android:textColor="#000" android:textSize="17sp" android:layout_marginStart="12dp"/>
                 <TextView android:id="@+id/val_bitrate" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="12 Mbps" android:textColor="#8E8E93" android:textSize="17sp" android:layout_marginEnd="4dp"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text=">" android:textColor="#C7C7CC" android:textSize="17sp"/>
+            </LinearLayout>
+            <View android:layout_width="match_parent" android:layout_height="0.5dp" android:background="#1E3C3C43" android:layout_marginStart="56dp"/>
+
+            <!-- Video Encoder -->
+            <LinearLayout android:id="@+id/row_encoder" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingHorizontal="16dp" android:paddingVertical="12dp" android:background="?actionBarItemBackground">
+                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+                    <ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@android:drawable/ic_menu_camera" app:tint="#8B5CF6"/>
+                    <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Video Encoder" android:textColor="#000" android:textSize="17sp" android:layout_marginStart="12dp"/>
+                    <TextView android:id="@+id/val_encoder" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="H.264" android:textColor="#8E8E93" android:textSize="17sp" android:layout_marginEnd="4dp"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text=">" android:textColor="#C7C7CC" android:textSize="17sp"/>
+                </LinearLayout>
+                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="HEVC reduces file size but may not be compatible with older devices." android:textColor="#8E8E93" android:textSize="11sp" android:layout_marginStart="40dp" android:layout_marginTop="2dp" />
+            </LinearLayout>
+            <View android:layout_width="match_parent" android:layout_height="0.5dp" android:background="#1E3C3C43" android:layout_marginStart="56dp"/>
+
+            <!-- Max File Size -->
+            <LinearLayout android:id="@+id/row_max_file_size" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:paddingHorizontal="16dp" android:paddingVertical="12dp" android:gravity="center_vertical" android:background="?actionBarItemBackground">
+                <ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@android:drawable/ic_menu_manage" app:tint="#F43F5E"/>
+                <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Max File Size" android:textColor="#000" android:textSize="17sp" android:layout_marginStart="12dp"/>
+                <TextView android:id="@+id/val_max_file_size" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="No Limit" android:textColor="#8E8E93" android:textSize="17sp" android:layout_marginEnd="4dp"/>
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text=">" android:textColor="#C7C7CC" android:textSize="17sp"/>
             </LinearLayout>
         </LinearLayout>
@@ -90,12 +120,19 @@
                 <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Record Audio" android:textColor="#000" android:textSize="17sp" android:layout_marginStart="12dp"/>
                 <Switch android:id="@+id/switch_mic" android:layout_width="wrap_content" android:layout_height="wrap_content" android:thumbTint="#FFFFFF" android:trackTint="#8B5CF6" />
             </LinearLayout>
+            <View android:layout_width="match_parent" android:layout_height="0.5dp" android:background="#1E3C3C43" android:layout_marginStart="56dp"/>
+
+            <LinearLayout android:id="@+id/row_show_touches" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:paddingHorizontal="16dp" android:paddingVertical="12dp" android:gravity="center_vertical" android:background="?actionBarItemBackground">
+                <ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@android:drawable/ic_menu_edit" app:tint="#3B82F6"/>
+                <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Show Touches" android:textColor="#000" android:textSize="17sp" android:layout_marginStart="12dp"/>
+                <Switch android:id="@+id/switch_show_touches" android:layout_width="wrap_content" android:layout_height="wrap_content" android:thumbTint="#FFFFFF" android:trackTint="#3B82F6" />
+            </LinearLayout>
         </LinearLayout>
         
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Record microphone audio while recording."
+            android:text="Record microphone audio or show screen touches while recording. (Show Touches requires system modify permission)"
             android:textColor="#8E8E93"
             android:textSize="13sp"
             android:layout_marginStart="32dp"
@@ -168,6 +205,39 @@
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="v1.2.0" android:textColor="#8B5CF6" android:background="#208B5CF6" android:paddingHorizontal="6dp" android:paddingVertical="2dp" android:textSize="11sp" android:layout_marginTop="4dp" android:textStyle="bold" />
             </LinearLayout>
              <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text=">" android:textColor="#C7C7CC" android:textSize="17sp"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/row_export_code"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:background="@drawable/bg_stat_card"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="24dp"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="12dp"
+            android:gravity="center_vertical"
+            android:elevation="0dp">
+            <ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@android:drawable/ic_menu_save" app:tint="#3B82F6" />
+            <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Export Codebase (ZIP)" android:textColor="#000" android:textSize="17sp" android:layout_marginStart="12dp"/>
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/row_reset_defaults"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:background="@drawable/bg_stat_card"
+            android:layout_marginHorizontal="16dp"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="24dp"
+            android:paddingHorizontal="16dp"
+            android:paddingVertical="12dp"
+            android:gravity="center_vertical"
+            android:elevation="0dp">
+            <ImageView android:layout_width="28dp" android:layout_height="28dp" android:src="@android:drawable/ic_menu_revert" app:tint="#EF4444" />
+            <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Reset to Defaults" android:textColor="#EF4444" android:textSize="17sp" android:layout_marginStart="12dp"/>
         </LinearLayout>
 
         <Switch android:id="@+id/switch_sys_audio" android:layout_width="wrap_content" android:layout_height="wrap_content" android:visibility="gone" />

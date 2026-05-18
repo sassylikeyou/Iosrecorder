@@ -46,6 +46,18 @@ class SettingsRepository(context: Context) {
         get() = prefs.getInt("themeMode", -1) // -1 SYSTEM, 1 LIGHT, 2 DARK
         set(value) = prefs.edit().putInt("themeMode", value).apply()
 
+    var countdownDuration: Int
+        get() = prefs.getInt("countdownDuration", 3) // default 3s
+        set(value) = prefs.edit().putInt("countdownDuration", value).apply()
+
+    var showTouches: Boolean
+        get() = prefs.getBoolean("showTouches", false)
+        set(value) = prefs.edit().putBoolean("showTouches", value).apply()
+
+    var maxFileSize: Long
+        get() = prefs.getLong("maxFileSize", 0L) // 0 = no limit
+        set(value) = prefs.edit().putLong("maxFileSize", value).apply()
+
     fun getSummary(): String {
         return "${resolutionHeight}p · ${frameRate}fps · ${(videoBitrate / 1_000_000)}Mbps"
     }

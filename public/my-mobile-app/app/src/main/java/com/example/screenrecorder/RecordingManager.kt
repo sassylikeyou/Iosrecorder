@@ -18,6 +18,12 @@ object RecordingManager {
     var isRecording = false
         private set
 
+    var recordingStartTime = 0L
+        private set
+
+    private var appContext: Context? = null
+    private var originalShowTouchesValue: Int = -1
+
     private var mediaRecorder: MediaRecorder? = null
     private var virtualDisplay: VirtualDisplay? = null
     private var mediaProjection: MediaProjection? = null
@@ -29,8 +35,18 @@ object RecordingManager {
     fun startRecording(context: Context, projection: MediaProjection): Boolean {
         if (isRecording) return true
 
+        appContext = context.applicationContext
         mediaProjection = projection
         val settings = SettingsRepository(context)
+
+        if (settings.showTouches && android.provider.Settings.System.canWrite(context)) {
+            try {
+                originalShowTouchesValue = android.provider.Settings.System.getInt(context.contentResolver, "show_touches", 0)
+                android.provider.Settings.System.putInt(context.contentResolver, "show_touches", 1)
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
         
         mediaRecorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             MediaRecorder(context)
@@ -54,6 +70,7 @@ object RecordingManager {
             virtualDisplay = createVirtualDisplay(context, settings)
             mediaRecorder?.start()
             isRecording = true
+            recordingStartTime = System.currentTimeMillis()
             true
         } catch (e: Exception) {
             android.util.Log.e("ScreenRecorder", "Failed to start recording", e)
@@ -85,8 +102,19 @@ object RecordingManager {
         } catch (e: Exception) {
             e.printStackTrace()
         } finally {
+            if (originalShowTouchesValue != -1) {
+                try {
+                    appContext?.let {
+                        android.provider.Settings.System.putInt(it.contentResolver, "show_touches", originalShowTouchesValue)
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+                originalShowTouchesValue = -1
+            }
             releaseResources()
             isRecording = false
+            recordingStartTime = 0L
         }
     }
 
@@ -143,6 +171,19 @@ object RecordingManager {
         recorder.setVideoSize(getVideoWidth(context, settings), getVideoHeight(context, settings))
         recorder.setVideoEncodingBitRate(settings.videoBitrate)
         recorder.setVideoFrameRate(settings.frameRate)
+
+        if (settings.maxFileSize > 0L) {
+            recorder.setMaxFileSize(settings.maxFileSize)
+            recorder.setOnInfoListener { mr, what, extra ->
+                if (what == MediaRecorder.MEDIA_RECORDER_INFO_MAX_FILESIZE_REACHED) {
+                    android.util.Log.i("ScreenRecorder", "Max file size reached, stopping recording...")
+                    android.os.Handler(android.os.Looper.getMainLooper()).post {
+                        android.widget.Toast.makeText(context, "Max file size reached. Recording saved.", android.widget.Toast.LENGTH_LONG).show()
+                    }
+                    stopRecording()
+                }
+            }
+        }
     }
 
     private fun createVirtualDisplay(context: Context, settings: SettingsRepository): VirtualDisplay? {

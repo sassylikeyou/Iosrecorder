@@ -48,6 +48,26 @@ class MainActivity : AppCompatActivity() {
     private var bgAnimator: ValueAnimator? = null
     private var rippleAnimator: ObjectAnimator? = null
 
+    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+    private var isCountingDown = false
+    private val liveTimerRunnable = object : Runnable {
+        override fun run() {
+            if (RecordingManager.isRecording) {
+                val duration = System.currentTimeMillis() - RecordingManager.recordingStartTime
+                val seconds = (duration / 1000).toInt() % 60
+                val minutes = ((duration / (1000 * 60)) % 60).toInt()
+                val hours = (duration / (1000 * 60 * 60)).toInt()
+                val timeString = if (hours > 0) {
+                    String.format(java.util.Locale.US, "%02d:%02d:%02d", hours, minutes, seconds)
+                } else {
+                    String.format(java.util.Locale.US, "%02d:%02d", minutes, seconds)
+                }
+                viewRecord.findViewById<TextView>(R.id.txt_status)?.text = "Recording in progress... $timeString"
+                handler.postDelayed(this, 1000)
+            }
+        }
+    }
+
     private val captureIntentLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK && result.data != null) {
             val serviceIntent = Intent(this, RecordingService::class.java).apply {
@@ -278,12 +298,75 @@ class MainActivity : AppCompatActivity() {
                 dialog.dismiss()
             }.show()
         }
+        viewSettings.findViewById<View>(R.id.row_countdown)?.setOnClickListener {
+            val options = arrayOf("0s (Off)", "3s", "5s")
+            val values = intArrayOf(0, 3, 5)
+            val currentIndex = values.indexOf(settingsRepository.countdownDuration).takeIf { it >= 0 } ?: 1
+            AlertDialog.Builder(this).setSingleChoiceItems(options, currentIndex) { dialog, which ->
+                settingsRepository.countdownDuration = values[which]
+                updateSettingsUI()
+                dialog.dismiss()
+            }.show()
+        }
         viewSettings.findViewById<View>(R.id.row_bitrate).setOnClickListener {
             val options = arrayOf("5 Mbps", "8 Mbps", "12 Mbps", "16 Mbps")
             val values = intArrayOf(5000000, 8000000, 12000000, 16000000)
             val currentIndex = values.indexOf(settingsRepository.videoBitrate).takeIf { it >= 0 } ?: 2
             AlertDialog.Builder(this).setSingleChoiceItems(options, currentIndex) { dialog, which ->
                 settingsRepository.videoBitrate = values[which]
+                updateSettingsUI()
+                dialog.dismiss()
+            }.show()
+        }
+
+        viewSettings.findViewById<View>(R.id.row_encoder)?.setOnClickListener {
+            val options = arrayOf("H.264 / AVC", "H.265 / HEVC")
+            val currentIndex = if (settingsRepository.videoEncoder == "H265") 1 else 0
+            AlertDialog.Builder(this).setSingleChoiceItems(options, currentIndex) { dialog, which ->
+                settingsRepository.videoEncoder = if (which == 1) "H265" else "H264"
+                updateSettingsUI()
+                dialog.dismiss()
+            }.show()
+        }
+
+        viewSettings.findViewById<View>(R.id.row_max_file_size)?.setOnClickListener {
+            val options = arrayOf("No Limit", "1 GB", "2 GB", "4 GB", "Custom Size")
+            // default indices
+            val limit = settingsRepository.maxFileSize
+            val currentIndex = when (limit) {
+                0L -> 0
+                1024L * 1024L * 1024L -> 1
+                2048L * 1024L * 1024L -> 2
+                4096L * 1024L * 1024L -> 3
+                else -> 4
+            }
+            AlertDialog.Builder(this).setSingleChoiceItems(options, currentIndex) { dialog, which ->
+                when (which) {
+                    0 -> settingsRepository.maxFileSize = 0L
+                    1 -> settingsRepository.maxFileSize = 1024L * 1024L * 1024L
+                    2 -> settingsRepository.maxFileSize = 2048L * 1024L * 1024L
+                    3 -> settingsRepository.maxFileSize = 4096L * 1024L * 1024L
+                    4 -> {
+                        val editText = android.widget.EditText(this).apply {
+                            inputType = android.text.InputType.TYPE_CLASS_NUMBER
+                            hint = "Size in MB"
+                        }
+                        AlertDialog.Builder(this)
+                            .setTitle("Custom File Size Limit (MB)")
+                            .setView(editText)
+                            .setPositiveButton("Set") { _, _ ->
+                                val mb = editText.text.toString().toLongOrNull()
+                                if (mb != null && mb > 0) {
+                                    settingsRepository.maxFileSize = mb * 1024L * 1024L
+                                    updateSettingsUI()
+                                }
+                            }
+                            .setNegativeButton("Cancel", null)
+                            .show()
+                        dialog.dismiss()
+                        return@setSingleChoiceItems
+                    }
+                }
                 updateSettingsUI()
                 dialog.dismiss()
             }.show()
@@ -298,6 +381,34 @@ class MainActivity : AppCompatActivity() {
             }.show()
         }
 
+        viewSettings.findViewById<View>(R.id.row_export_code)?.setOnClickListener {
+            AlertDialog.Builder(this)
+                .setTitle("Export Codebase")
+                .setMessage("To export the codebase as a ZIP file or to GitHub, please use the platform Settings menu (gear icon) located outside of the app preview.")
+                .setPositiveButton("OK", null)
+                .show()
+        }
+
+        viewSettings.findViewById<View>(R.id.row_reset_defaults)?.setOnClickListener {
+            AlertDialog.Builder(this)
+                .setTitle("Reset to Defaults")
+                .setMessage("Are you sure you want to revert all settings to their default values?")
+                .setPositiveButton("Reset") { dialog, _ ->
+                    settingsRepository.resetToDefaults()
+                    val mode = when (settingsRepository.themeMode) {
+                        1 -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO
+                        2 -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES
+                        else -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+                    }
+                    androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(mode)
+                    updateSettingsUI()
+                    dialog.dismiss()
+                    android.widget.Toast.makeText(this, "Settings reset to defaults", android.widget.Toast.LENGTH_SHORT).show()
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+        }
+
         val switchMic = viewSettings.findViewById<Switch>(R.id.switch_mic)
         switchMic.setOnCheckedChangeListener { _, isChecked ->
             if (isChecked) {
@@ -308,13 +419,17 @@ class MainActivity : AppCompatActivity() {
             updateSettingsUI()
         }
         
-        val switchSys = viewSettings.findViewById<Switch>(R.id.switch_sys_audio)
-        switchSys.setOnCheckedChangeListener { _, isChecked ->
-            if (isChecked) {
-                settingsRepository.audioSourceMode = if (viewSettings.findViewById<Switch>(R.id.switch_mic).isChecked) 3 else 2
-            } else {
-                settingsRepository.audioSourceMode = if (viewSettings.findViewById<Switch>(R.id.switch_mic).isChecked) 1 else 0
+        val switchShowTouches = viewSettings.findViewById<Switch>(R.id.switch_show_touches)
+        switchShowTouches?.setOnCheckedChangeListener { _, isChecked ->
+            if (isChecked && !android.provider.Settings.System.canWrite(this)) {
+                switchShowTouches.isChecked = false
+                val intent = Intent(android.provider.Settings.ACTION_MANAGE_WRITE_SETTINGS)
+                intent.data = Uri.parse("package:$packageName")
+                startActivity(intent)
+                android.widget.Toast.makeText(this, "Please grant permission to modify system settings", android.widget.Toast.LENGTH_LONG).show()
+                return@setOnCheckedChangeListener
             }
+            settingsRepository.showTouches = isChecked
             updateSettingsUI()
         }
     }
@@ -458,7 +573,8 @@ class MainActivity : AppCompatActivity() {
         val statsContainer = viewRecord.findViewById<LinearLayout>(R.id.stats_row_container)
 
         if (RecordingManager.isRecording) {
-            txtStatus.text = "Recording in progress..."
+            handler.removeCallbacks(liveTimerRunnable)
+            handler.post(liveTimerRunnable)
             txtRec?.text = "STOP"
             startPulseAnimation()
             
@@ -472,6 +588,7 @@ class MainActivity : AppCompatActivity() {
                     .start()
             }
         } else {
+            handler.removeCallbacks(liveTimerRunnable)
             txtStatus.text = "✦ Tap the button to start recording"
             txtRec?.text = "REC"
             stopPulseAnimation()
@@ -498,6 +615,9 @@ class MainActivity : AppCompatActivity() {
         }
         viewSettings.findViewById<TextView>(R.id.val_theme)?.text = themeString
 
+        val cdLength = settingsRepository.countdownDuration
+        viewSettings.findViewById<TextView>(R.id.val_countdown)?.text = if (cdLength == 0) "Off" else "${cdLength}s"
+
         val resString = when(settingsRepository.resolutionHeight) {
             720 -> "720p HD"
             1080 -> "1080p HD"
@@ -508,10 +628,21 @@ class MainActivity : AppCompatActivity() {
         viewSettings.findViewById<TextView>(R.id.val_fps).text = "${settingsRepository.frameRate} FPS"
         viewSettings.findViewById<TextView>(R.id.val_bitrate).text = "${settingsRepository.videoBitrate / 1000000} Mbps"
 
+        val encoderString = if (settingsRepository.videoEncoder == "H265") "H.265 / HEVC" else "H.264 / AVC"
+        viewSettings.findViewById<TextView>(R.id.val_encoder)?.text = encoderString
+
+        val mbSize = settingsRepository.maxFileSize / (1024 * 1024)
+        val limitString = if (mbSize <= 0) "No Limit" else if (mbSize >= 1024 && mbSize % 1024 == 0L) "${mbSize / 1024} GB" else "$mbSize MB"
+        viewSettings.findViewById<TextView>(R.id.val_max_file_size)?.text = limitString
+
         val source = settingsRepository.audioSourceMode
         viewSettings.findViewById<Switch>(R.id.switch_mic).setOnCheckedChangeListener(null)
         
         viewSettings.findViewById<Switch>(R.id.switch_mic).isChecked = (source == 1 || source == 3)
+
+        val switchShowTouches = viewSettings.findViewById<Switch>(R.id.switch_show_touches)
+        switchShowTouches?.setOnCheckedChangeListener(null)
+        switchShowTouches?.isChecked = settingsRepository.showTouches
         
         setupSettingsView() // reattach listeners
     }
@@ -528,6 +659,10 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkPermissionsAndStart() {
+        if (isCountingDown) {
+            cancelCountdown()
+            return
+        }
         val permissions = mutableListOf<String>()
         if (settingsRepository.audioSourceMode != 0) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
@@ -561,8 +696,44 @@ class MainActivity : AppCompatActivity() {
         if (RecordingManager.isRecording) {
             stopRecording()
         } else {
-            startRecordingFlow()
+            val duration = settingsRepository.countdownDuration
+            if (duration <= 0) {
+                startRecordingFlow()
+            } else {
+                startCountdown(duration)
+            }
         }
+    }
+
+    private var countdownRunnable: Runnable? = null
+
+    private fun startCountdown(seconds: Int) {
+        val txtCountdown = viewRecord.findViewById<TextView>(R.id.txt_countdown)
+        txtCountdown.visibility = View.VISIBLE
+        isCountingDown = true
+        var remaining = seconds
+        
+        countdownRunnable = object : Runnable {
+            override fun run() {
+                if (remaining > 0) {
+                    txtCountdown.text = remaining.toString()
+                    remaining--
+                    handler.postDelayed(this, 1000)
+                } else {
+                    txtCountdown.visibility = View.GONE
+                    isCountingDown = false
+                    startRecordingFlow()
+                }
+            }
+        }
+        handler.post(countdownRunnable!!)
+    }
+
+    private fun cancelCountdown() {
+        countdownRunnable?.let { handler.removeCallbacks(it) }
+        countdownRunnable = null
+        isCountingDown = false
+        viewRecord.findViewById<TextView>(R.id.txt_countdown).visibility = View.GONE
     }
 
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
