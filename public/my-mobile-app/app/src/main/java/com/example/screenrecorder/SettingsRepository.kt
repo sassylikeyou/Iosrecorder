@@ -42,6 +42,10 @@ class SettingsRepository(context: Context) {
         get() = prefs.getString("outputFolderUri", null)
         set(value) = prefs.edit().putString("outputFolderUri", value).apply()
 
+    var themeMode: Int
+        get() = prefs.getInt("themeMode", -1) // -1 SYSTEM, 1 LIGHT, 2 DARK
+        set(value) = prefs.edit().putInt("themeMode", value).apply()
+
     fun getSummary(): String {
         return "${resolutionHeight}p · ${frameRate}fps · ${(videoBitrate / 1_000_000)}Mbps"
     }

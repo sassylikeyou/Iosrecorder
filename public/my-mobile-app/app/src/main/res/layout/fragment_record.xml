@@ -42,6 +42,13 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
 
+        <View
+            android:id="@+id/rec_ripple"
+            android:layout_width="140dp"
+            android:layout_height="140dp"
+            android:layout_gravity="center"
+            android:background="@drawable/bg_ripple_circle" />
+
         <FrameLayout
             android:id="@+id/btn_record"
             android:layout_width="160dp"
@@ -113,7 +120,7 @@
                 android:layout_marginBottom="8dp"/>
             <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Resolution" android:textColor="#A0A0A5" android:textSize="12sp" />
             <TextView android:id="@+id/stat_res" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="1080p" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold" android:layout_marginTop="4dp"/>
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="FHD" android:textColor="#8B5CF6" android:background="#208B5CF6" android:paddingHorizontal="6dp" android:paddingVertical="2dp" android:textSize="10sp" android:layout_marginTop="4dp" android:textStyle="bold"/>
+            <TextView android:id="@+id/stat_res_badge" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="FHD" android:textColor="#8B5CF6" android:background="#208B5CF6" android:paddingHorizontal="6dp" android:paddingVertical="2dp" android:textSize="10sp" android:layout_marginTop="4dp" android:textStyle="bold"/>
         </LinearLayout>
 
         <!-- FPS -->
@@ -131,7 +138,7 @@
                 android:layout_marginBottom="8dp"/>
             <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="FPS" android:textColor="#A0A0A5" android:textSize="12sp" />
             <TextView android:id="@+id/stat_fps" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="60" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold" android:layout_marginTop="4dp"/>
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="FPS" android:textColor="#3B82F6" android:background="#203B82F6" android:paddingHorizontal="6dp" android:paddingVertical="2dp" android:textSize="10sp" android:layout_marginTop="4dp" android:textStyle="bold"/>
+            <TextView android:id="@+id/stat_fps_badge" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="FPS" android:textColor="#3B82F6" android:background="#203B82F6" android:paddingHorizontal="6dp" android:paddingVertical="2dp" android:textSize="10sp" android:layout_marginTop="4dp" android:textStyle="bold"/>
         </LinearLayout>
 
         <!-- Bitrate -->
@@ -149,7 +156,7 @@
                 android:layout_marginBottom="8dp"/>
             <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Bitrate" android:textColor="#A0A0A5" android:textSize="12sp" />
             <TextView android:id="@+id/stat_bit" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="12 Mbps" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold" android:layout_marginTop="4dp"/>
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="HIGH" android:textColor="#F97316" android:background="#20F97316" android:paddingHorizontal="6dp" android:paddingVertical="2dp" android:textSize="10sp" android:layout_marginTop="4dp" android:textStyle="bold"/>
+            <TextView android:id="@+id/stat_bit_badge" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="HIGH" android:textColor="#F97316" android:background="#20F97316" android:paddingHorizontal="6dp" android:paddingVertical="2dp" android:textSize="10sp" android:layout_marginTop="4dp" android:textStyle="bold"/>
         </LinearLayout>
     </LinearLayout>
 

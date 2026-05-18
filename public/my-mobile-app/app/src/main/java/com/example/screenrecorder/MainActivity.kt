@@ -22,6 +22,9 @@ import android.os.Build
 import androidx.appcompat.app.AlertDialog
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
+import android.animation.ObjectAnimator
+import android.animation.PropertyValuesHolder
+import android.animation.ValueAnimator
 
 class MainActivity : AppCompatActivity() {
 
@@ -40,7 +43,10 @@ class MainActivity : AppCompatActivity() {
     private lateinit var viewSettings: View
 
     private var currentTabIndex = -1
-    private var pulseAnimator: android.animation.ObjectAnimator? = null
+    private var pulseAnimator: ObjectAnimator? = null
+    private var btnAnimator: ObjectAnimator? = null
+    private var bgAnimator: ValueAnimator? = null
+    private var rippleAnimator: ObjectAnimator? = null
 
     private val captureIntentLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK && result.data != null) {
@@ -56,9 +62,17 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        settingsRepository = SettingsRepository(this)
+        
+        val mode = when (settingsRepository.themeMode) {
+            1 -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO
+            2 -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES
+            else -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+        }
+        androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(mode)
+        
         setContentView(R.layout.activity_main)
 
-        settingsRepository = SettingsRepository(this)
         projectionManager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
 
         container = findViewById(R.id.fragment_container)
@@ -82,12 +96,15 @@ class MainActivity : AppCompatActivity() {
         setupSettingsView()
         setupLibraryView()
 
+        startBackgroundAnimation()
+
         switchTab(0)
     }
 
     private fun switchTab(index: Int) {
         if (currentTabIndex == index) return
         val isForward = index > currentTabIndex
+        val previousIndex = currentTabIndex
         currentTabIndex = index
         
         val targetView = when (index) {
@@ -125,21 +142,73 @@ class MainActivity : AppCompatActivity() {
         val colorActive = Color.parseColor("#8B5CF6")
         val colorInactive = Color.parseColor("#8E8E93")
 
-        findViewById<ImageView>(R.id.icon_record).setColorFilter(if (index == 0) colorActive else colorInactive)
+        val ivRecord = findViewById<ImageView>(R.id.icon_record)
+        val ivLibrary = findViewById<ImageView>(R.id.icon_library)
+        val ivSettings = findViewById<ImageView>(R.id.icon_settings)
+
+        if (previousIndex != -1) {
+            animateTabIcon(ivRecord, index == 0)
+            animateTabIcon(ivLibrary, index == 1)
+            animateTabIcon(ivSettings, index == 2)
+        } else {
+            ivRecord.scaleX = if (index == 0) 1.2f else 1.0f
+            ivRecord.scaleY = if (index == 0) 1.2f else 1.0f
+            ivLibrary.scaleX = if (index == 1) 1.2f else 1.0f
+            ivLibrary.scaleY = if (index == 1) 1.2f else 1.0f
+            ivSettings.scaleX = if (index == 2) 1.2f else 1.0f
+            ivSettings.scaleY = if (index == 2) 1.2f else 1.0f
+        }
+
+        ivRecord.setColorFilter(if (index == 0) colorActive else colorInactive)
         findViewById<TextView>(R.id.text_record).setTextColor(if (index == 0) colorActive else colorInactive)
         findViewById<TextView>(R.id.text_record).typeface = if (index == 0) android.graphics.Typeface.DEFAULT_BOLD else android.graphics.Typeface.DEFAULT
 
-        findViewById<ImageView>(R.id.icon_library).setColorFilter(if (index == 1) colorActive else colorInactive)
+        ivLibrary.setColorFilter(if (index == 1) colorActive else colorInactive)
         findViewById<TextView>(R.id.text_library).setTextColor(if (index == 1) colorActive else colorInactive)
         findViewById<TextView>(R.id.text_library).typeface = if (index == 1) android.graphics.Typeface.DEFAULT_BOLD else android.graphics.Typeface.DEFAULT
 
-        findViewById<ImageView>(R.id.icon_settings).setColorFilter(if (index == 2) colorActive else colorInactive)
+        ivSettings.setColorFilter(if (index == 2) colorActive else colorInactive)
         findViewById<TextView>(R.id.text_settings).setTextColor(if (index == 2) colorActive else colorInactive)
         findViewById<TextView>(R.id.text_settings).typeface = if (index == 2) android.graphics.Typeface.DEFAULT_BOLD else android.graphics.Typeface.DEFAULT
 
         if (index == 0) updateRecordUI()
         if (index == 1) loadLibrary()
         if (index == 2) updateSettingsUI()
+    }
+
+    private fun animateTabIcon(icon: ImageView, isSelected: Boolean) {
+        val targetScale = if (isSelected) 1.2f else 1.0f
+        icon.animate()
+            .scaleX(targetScale)
+            .scaleY(targetScale)
+            .setDuration(300)
+            .setInterpolator(android.view.animation.OvershootInterpolator())
+            .start()
+    }
+
+    private fun startBackgroundAnimation() {
+        if (bgAnimator == null) {
+            val color1 = Color.parseColor("#CC150030") // Purpleish dark
+            val color2 = Color.parseColor("#E6000000") // Blackish
+            
+            val gradient = GradientDrawable(
+                GradientDrawable.Orientation.TL_BR,
+                intArrayOf(color1, color2)
+            )
+            gradient.shape = GradientDrawable.RECTANGLE
+            container.background = gradient
+
+            bgAnimator = ValueAnimator.ofFloat(0f, 1f, 0f).apply {
+                duration = 10000
+                repeatCount = ValueAnimator.INFINITE
+                addUpdateListener { animator ->
+                    val fraction = animator.animatedValue as Float
+                    // Interpolate orientation or simply colors (hack: adjust center)
+                    gradient.setGradientCenter(0.5f + fraction * 0.5f, 0.5f + fraction * 0.5f)
+                }
+            }
+        }
+        bgAnimator?.start()
     }
 
     private fun setupRecordView() {
@@ -151,9 +220,44 @@ class MainActivity : AppCompatActivity() {
             settingsRepository.audioSourceMode = if (settingsRepository.audioSourceMode == 0) 1 else 0
             updateRecordUI()
         }
+        
+        startRippleAnimation()
+    }
+
+    private fun startRippleAnimation() {
+        val ripple = viewRecord.findViewById<View>(R.id.rec_ripple)
+        if (rippleAnimator == null) {
+            val scaleX = PropertyValuesHolder.ofFloat(View.SCALE_X, 0.8f, 1.5f)
+            val scaleY = PropertyValuesHolder.ofFloat(View.SCALE_Y, 0.8f, 1.5f)
+            val alpha = PropertyValuesHolder.ofFloat(View.ALPHA, 0.6f, 0f)
+            rippleAnimator = ObjectAnimator.ofPropertyValuesHolder(ripple, scaleX, scaleY, alpha).apply {
+                duration = 1200
+                repeatCount = ObjectAnimator.INFINITE
+                repeatMode = ObjectAnimator.RESTART
+                interpolator = android.view.animation.DecelerateInterpolator()
+            }
+        }
+        rippleAnimator?.start()
     }
 
     private fun setupSettingsView() {
+        viewSettings.findViewById<View>(R.id.row_theme)?.setOnClickListener {
+            val options = arrayOf("System Default", "Light Theme", "Dark Theme")
+            val values = intArrayOf(-1, 1, 2)
+            val currentIndex = values.indexOf(settingsRepository.themeMode).takeIf { it >= 0 } ?: 0
+            AlertDialog.Builder(this).setSingleChoiceItems(options, currentIndex) { dialog, which ->
+                settingsRepository.themeMode = values[which]
+                val mode = when (values[which]) {
+                    1 -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO
+                    2 -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES
+                    else -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+                }
+                androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(mode)
+                updateSettingsUI()
+                dialog.dismiss()
+            }.show()
+        }
+
         viewSettings.findViewById<View>(R.id.row_resolution).setOnClickListener {
             val options = arrayOf("720p HD", "1080p HD", "1440p HD")
             val values = intArrayOf(720, 1080, 1440)
@@ -165,8 +269,8 @@ class MainActivity : AppCompatActivity() {
             }.show()
         }
         viewSettings.findViewById<View>(R.id.row_fps).setOnClickListener {
-            val options = arrayOf("30 fps", "60 fps", "90 fps")
-            val values = intArrayOf(30, 60, 90)
+            val options = arrayOf("30 FPS", "60 FPS", "90 FPS", "120 FPS")
+            val values = intArrayOf(30, 60, 90, 120)
             val currentIndex = values.indexOf(settingsRepository.frameRate).takeIf { it >= 0 } ?: 1
             AlertDialog.Builder(this).setSingleChoiceItems(options, currentIndex) { dialog, which ->
                 settingsRepository.frameRate = values[which]
@@ -260,36 +364,62 @@ class MainActivity : AppCompatActivity() {
             txtEmpty.visibility = View.GONE
         }
         val recyclerView = viewLibrary.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.recycler_view)
-        recyclerView.adapter = LibraryAdapter(files) { file ->
-            val intent = Intent(Intent.ACTION_VIEW, file.uri)
-            intent.setDataAndType(file.uri, "video/*")
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            startActivity(intent)
-        }
+        recyclerView.adapter = LibraryAdapter(
+            files,
+            onClick = { file ->
+                val intent = Intent(Intent.ACTION_VIEW, file.uri)
+                intent.setDataAndType(file.uri, "video/*")
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                startActivity(intent)
+            },
+            onDelete = { file ->
+                deleteVideo(file)
+            },
+            onRename = { file ->
+                renameVideo(file)
+            },
+            onShare = { file ->
+                shareVideo(file)
+            }
+        )
     }
 
     private fun startPulseAnimation() {
         val halo = viewRecord.findViewById<View>(R.id.rec_halo)
         val btn = viewRecord.findViewById<View>(R.id.btn_record)
+        
         if (pulseAnimator == null) {
-            val scaleX = android.animation.PropertyValuesHolder.ofFloat(View.SCALE_X, 1f, 1.15f)
-            val scaleY = android.animation.PropertyValuesHolder.ofFloat(View.SCALE_Y, 1f, 1.15f)
-            pulseAnimator = android.animation.ObjectAnimator.ofPropertyValuesHolder(halo, scaleX, scaleY).apply {
-                duration = 800
-                repeatCount = android.animation.ObjectAnimator.INFINITE
-                repeatMode = android.animation.ObjectAnimator.REVERSE
+            val scaleX = PropertyValuesHolder.ofFloat(View.SCALE_X, 1f, 1.5f)
+            val scaleY = PropertyValuesHolder.ofFloat(View.SCALE_Y, 1f, 1.5f)
+            val alpha = PropertyValuesHolder.ofFloat(View.ALPHA, 0.8f, 0f)
+            pulseAnimator = ObjectAnimator.ofPropertyValuesHolder(halo, scaleX, scaleY, alpha).apply {
+                duration = 2000
+                repeatCount = ObjectAnimator.INFINITE
+                repeatMode = ObjectAnimator.RESTART
+            }
+        }
+        
+        if (btnAnimator == null) {
+            val btnScaleX = PropertyValuesHolder.ofFloat(View.SCALE_X, 1f, 1.05f)
+            val btnScaleY = PropertyValuesHolder.ofFloat(View.SCALE_Y, 1f, 1.05f)
+            btnAnimator = ObjectAnimator.ofPropertyValuesHolder(btn, btnScaleX, btnScaleY).apply {
+                duration = 1000
+                repeatCount = ObjectAnimator.INFINITE
+                repeatMode = ObjectAnimator.REVERSE
                 interpolator = android.view.animation.AccelerateDecelerateInterpolator()
             }
         }
+        
         pulseAnimator?.start()
-        btn.animate().scaleX(1.1f).scaleY(1.1f).setDuration(300).start()
+        btnAnimator?.start()
     }
 
     private fun stopPulseAnimation() {
         pulseAnimator?.cancel()
+        btnAnimator?.cancel()
         val halo = viewRecord.findViewById<View>(R.id.rec_halo)
         val btn = viewRecord.findViewById<View>(R.id.btn_record)
-        halo.animate().scaleX(1f).scaleY(1f).setDuration(300).start()
+        halo.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(300).start()
         btn.animate().scaleX(1f).scaleY(1f).setDuration(300).start()
     }
 
@@ -299,39 +429,82 @@ class MainActivity : AppCompatActivity() {
         val txtRec = viewRecord.findViewById<TextView>(R.id.txt_rec)
         
         // stats
-        viewRecord.findViewById<TextView>(R.id.stat_res).text = "${settingsRepository.resolutionHeight}p"
-        viewRecord.findViewById<TextView>(R.id.stat_fps).text = "${settingsRepository.frameRate}"
-        viewRecord.findViewById<TextView>(R.id.stat_bit).text = "${settingsRepository.videoBitrate / 1000000} Mbps"
+        val resHeight = settingsRepository.resolutionHeight
+        val badgeRes = when (resHeight) {
+            720 -> "HD"
+            1080 -> "FHD"
+            1440 -> "QHD"
+            else -> "FHD"
+        }
+        viewRecord.findViewById<TextView>(R.id.stat_res).text = "${resHeight}p"
+        viewRecord.findViewById<TextView>(R.id.stat_res_badge).text = badgeRes
 
-        val statsContainer = viewRecord.findViewById<View>(R.id.stats_row_container)
+        val frameRate = settingsRepository.frameRate
+        viewRecord.findViewById<TextView>(R.id.stat_fps).text = "$frameRate"
+        viewRecord.findViewById<TextView>(R.id.stat_fps_badge).text = "FPS"
+
+        val bitrate = settingsRepository.videoBitrate
+        val bitMbps = bitrate / 1000000
+        val badgeBit = when (bitMbps) {
+            5 -> "LOW"
+            8 -> "MED"
+            12 -> "HIGH"
+            16 -> "ULTRA"
+            else -> "HIGH"
+        }
+        viewRecord.findViewById<TextView>(R.id.stat_bit).text = "$bitMbps Mbps"
+        viewRecord.findViewById<TextView>(R.id.stat_bit_badge).text = badgeBit
+
+        val statsContainer = viewRecord.findViewById<LinearLayout>(R.id.stats_row_container)
 
         if (RecordingManager.isRecording) {
             txtStatus.text = "Recording in progress..."
             txtRec?.text = "STOP"
             startPulseAnimation()
             
-            statsContainer.animate()
-                .alpha(0.5f)
-                .scaleX(0.9f)
-                .scaleY(0.9f)
-                .setDuration(400)
-                .start()
+            for (i in 0 until statsContainer.childCount) {
+                val child = statsContainer.getChildAt(i)
+                child.animate()
+                    .alpha(0f)
+                    .translationY(30f)
+                    .setStartDelay((i * 100).toLong())
+                    .setDuration(300)
+                    .start()
+            }
         } else {
             txtStatus.text = "✦ Tap the button to start recording"
             txtRec?.text = "REC"
             stopPulseAnimation()
             
-            statsContainer.animate()
-                .alpha(1f)
-                .scaleX(1f)
-                .scaleY(1f)
-                .setDuration(400)
-                .start()
+            for (i in 0 until statsContainer.childCount) {
+                val child = statsContainer.getChildAt(i)
+                child.translationY = 30f
+                child.animate()
+                    .alpha(1f)
+                    .translationY(0f)
+                    .setStartDelay((i * 200).toLong())
+                    .setDuration(500)
+                    .setInterpolator(android.view.animation.OvershootInterpolator())
+                    .start()
+            }
         }
     }
     
     private fun updateSettingsUI() {
-        viewSettings.findViewById<TextView>(R.id.val_resolution).text = "${settingsRepository.resolutionHeight}p (FHD)"
+        val themeString = when(settingsRepository.themeMode) {
+            1 -> "Light Theme"
+            2 -> "Dark Theme"
+            else -> "System Default"
+        }
+        viewSettings.findViewById<TextView>(R.id.val_theme)?.text = themeString
+
+        val resString = when(settingsRepository.resolutionHeight) {
+            720 -> "720p HD"
+            1080 -> "1080p HD"
+            1440 -> "1440p HD"
+            else -> "${settingsRepository.resolutionHeight}p (FHD)"
+        }
+        viewSettings.findViewById<TextView>(R.id.val_resolution).text = resString
         viewSettings.findViewById<TextView>(R.id.val_fps).text = "${settingsRepository.frameRate} FPS"
         viewSettings.findViewById<TextView>(R.id.val_bitrate).text = "${settingsRepository.videoBitrate / 1000000} Mbps"
 
@@ -392,6 +565,68 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode == 100 && resultCode == Activity.RESULT_OK) {
+            // Delete action was granted by the user, we can try to reload the library
+            loadLibrary()
+        }
+    }
+
+    private fun shareVideo(file: VideoFile) {
+        val intent = Intent(Intent.ACTION_SEND).apply {
+            type = "video/*"
+            putExtra(Intent.EXTRA_STREAM, file.uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        startActivity(Intent.createChooser(intent, "Share Video"))
+    }
+
+    private fun deleteVideo(file: VideoFile) {
+        try {
+            contentResolver.delete(file.uri, null, null)
+            loadLibrary()
+        } catch (e: SecurityException) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val recoverableSecurityException = e as? android.app.RecoverableSecurityException
+                val intentSender = recoverableSecurityException?.userAction?.actionIntent?.intentSender
+                if (intentSender != null) {
+                    startIntentSenderForResult(intentSender, 100, null, 0, 0, 0, null)
+                }
+            } else {
+                android.widget.Toast.makeText(this, "Permission denied to delete video", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        } catch (e: Exception) {
+            android.widget.Toast.makeText(this, "Failed to delete video", android.widget.Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun renameVideo(file: VideoFile) {
+        val editText = android.widget.EditText(this).apply {
+            setText(file.name)
+            setSelection(file.name.length)
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Rename Video")
+            .setView(editText)
+            .setPositiveButton("Rename") { _, _ ->
+                val newName = editText.text.toString()
+                if (newName.isNotBlank() && newName != file.name) {
+                    try {
+                        val values = android.content.ContentValues().apply {
+                            put(android.provider.MediaStore.Video.Media.DISPLAY_NAME, newName)
+                        }
+                        contentResolver.update(file.uri, values, null, null)
+                        loadLibrary()
+                    } catch (e: Exception) {
+                        android.widget.Toast.makeText(this, "Failed to rename video", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
     private fun startRecordingFlow() {
         val intent = projectionManager.createScreenCaptureIntent()
         captureIntentLauncher.launch(intent)
@@ -411,27 +646,47 @@ data class VideoFile(val uri: Uri, val name: String, val size: Long)
 
 class LibraryAdapter(
     private val files: List<VideoFile>,
-    private val onClick: (VideoFile) -> Unit
+    private val onClick: (VideoFile) -> Unit,
+    private val onDelete: (VideoFile) -> Unit,
+    private val onRename: (VideoFile) -> Unit,
+    private val onShare: (VideoFile) -> Unit
 ) : androidx.recyclerview.widget.RecyclerView.Adapter<LibraryAdapter.ViewHolder>() {
 
     class ViewHolder(view: View) : androidx.recyclerview.widget.RecyclerView.ViewHolder(view) {
-        val title: TextView = view.findViewById(android.R.id.text1)
-        val subtitle: TextView = view.findViewById(android.R.id.text2)
+        val title: TextView = view.findViewById(R.id.txt_title)
+        val subtitle: TextView = view.findViewById(R.id.txt_subtitle)
+        val btnDelete: ImageView = view.findViewById(R.id.btn_delete)
+        val btnMore: ImageView = view.findViewById(R.id.btn_more)
     }
 
     override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int): ViewHolder {
         val view = android.view.LayoutInflater.from(parent.context)
-            .inflate(android.R.layout.simple_list_item_2, parent, false)
+            .inflate(R.layout.item_video, parent, false)
         return ViewHolder(view)
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val file = files[position]
         holder.title.text = file.name
-        holder.title.setTextColor(Color.BLACK)
         holder.subtitle.text = "${file.size / (1024 * 1024)} MB"
-        holder.subtitle.setTextColor(Color.GRAY)
+        
         holder.itemView.setOnClickListener { onClick(file) }
+        
+        holder.btnDelete.setOnClickListener { onDelete(file) }
+        
+        holder.btnMore.setOnClickListener { view ->
+            val popup = android.widget.PopupMenu(view.context, holder.btnMore)
+            popup.menu.add(android.view.Menu.NONE, 1, 1, "Rename")
+            popup.menu.add(android.view.Menu.NONE, 2, 2, "Share")
+            popup.setOnMenuItemClickListener { item ->
+                when (item.itemId) {
+                    1 -> onRename(file)
+                    2 -> onShare(file)
+                }
+                true
+            }
+            popup.show()
+        }
     }
 
     override fun getItemCount() = files.size

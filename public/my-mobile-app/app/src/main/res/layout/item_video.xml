@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="horizontal"
+    android:padding="16dp"
+    android:layout_marginBottom="8dp"
+    android:layout_marginHorizontal="16dp"
+    android:background="@drawable/bg_stat_card"
+    android:elevation="0dp"
+    android:gravity="center_vertical">
+
+    <ImageView
+        android:layout_width="40dp"
+        android:layout_height="40dp"
+        android:src="@android:drawable/ic_media_play"
+        app:tint="#8B5CF6"
+        android:background="#208B5CF6"
+        android:padding="8dp"
+        android:layout_marginEnd="16dp" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/txt_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Video_2026.mp4"
+            android:ellipsize="middle"
+            android:singleLine="true"
+            android:textColor="?android:textColorPrimary"
+            android:textSize="14sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/txt_subtitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="15 MB"
+            android:textColor="#8E8E93"
+            android:textSize="12sp"
+            android:layout_marginTop="2dp" />
+
+    </LinearLayout>
+
+    <ImageView
+        android:id="@+id/btn_delete"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:src="@android:drawable/ic_menu_delete"
+        android:background="?selectableItemBackgroundBorderless"
+        android:padding="8dp"
+        android:layout_marginEnd="4dp"
+        app:tint="#EF4444" />
+
+    <ImageView
+        android:id="@+id/btn_more"
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:src="@android:drawable/ic_menu_more"
+        android:background="?selectableItemBackgroundBorderless"
+        android:padding="8dp"
+        app:tint="#8E8E93" />
+
+</LinearLayout>
