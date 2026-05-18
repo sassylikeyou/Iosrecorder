@@ -40,6 +40,12 @@ object RecordingManager {
         }
 
         return try {
+            mediaProjection?.registerCallback(object : MediaProjection.Callback() {
+                override fun onStop() {
+                    // Handle projection stopped externally
+                }
+            }, android.os.Handler(android.os.Looper.getMainLooper()))
+            
             setupMediaRecorder(context, settings)
             mediaRecorder?.prepare()
             virtualDisplay = createVirtualDisplay(context, settings)
