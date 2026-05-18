@@ -198,5 +198,6 @@ class MainActivity : AppCompatActivity() {
         }
         startService(serviceIntent)
         updateRecordUI()
+        android.widget.Toast.makeText(this, "Recording saved to Movies/ScreenRecorder", android.widget.Toast.LENGTH_LONG).show()
     }
 }

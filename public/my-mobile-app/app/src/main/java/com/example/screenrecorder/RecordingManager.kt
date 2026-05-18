@@ -22,6 +22,8 @@ object RecordingManager {
     private var virtualDisplay: VirtualDisplay? = null
     private var mediaProjection: MediaProjection? = null
 
+    private var currentFileDescriptor: android.os.ParcelFileDescriptor? = null
+
     fun startRecording(context: Context, projection: MediaProjection) {
         if (isRecording) return
 
@@ -43,7 +45,6 @@ object RecordingManager {
             isRecording = true
         } catch (e: Exception) {
             android.util.Log.e("ScreenRecorder", "Failed to start recording", e)
-            // Try fallback: lower resolution or simpler settings
             releaseResources()
         }
     }
@@ -64,7 +65,6 @@ object RecordingManager {
     private fun setupMediaRecorder(context: Context, settings: SettingsRepository) {
         val recorder = mediaRecorder ?: return
 
-        // Audio setup
         var hasAudio = false
         if (settings.audioSourceMode != 0) {
             try {
@@ -76,11 +76,30 @@ object RecordingManager {
         }
 
         recorder.setVideoSource(MediaRecorder.VideoSource.SURFACE)
-        
         recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
 
-        val outputFile = getOutputFile(context, settings)
-        recorder.setOutputFile(outputFile.absolutePath)
+        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+        val extension = if (settings.outputFormat == "MKV") ".mkv" else ".mp4"
+        val fileName = "Screen_$timestamp$extension"
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val contentValues = android.content.ContentValues().apply {
+                put(android.provider.MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+                put(android.provider.MediaStore.MediaColumns.MIME_TYPE, "video/mp4")
+                put(android.provider.MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_MOVIES + "/ScreenRecorder")
+            }
+            val uri = context.contentResolver.insert(android.provider.MediaStore.Video.Media.EXTERNAL_CONTENT_URI, contentValues)
+            if (uri != null) {
+                currentFileDescriptor = context.contentResolver.openFileDescriptor(uri, "rw")
+                recorder.setOutputFile(currentFileDescriptor?.fileDescriptor)
+            } else {
+                val fallbackFile = File(context.getExternalFilesDir(Environment.DIRECTORY_MOVIES), fileName)
+                recorder.setOutputFile(fallbackFile.absolutePath)
+            }
+        } else {
+            val fallbackFile = File(context.getExternalFilesDir(Environment.DIRECTORY_MOVIES), fileName)
+            recorder.setOutputFile(fallbackFile.absolutePath)
+        }
 
         val encoder = if (settings.videoEncoder == "H265") MediaRecorder.VideoEncoder.HEVC else MediaRecorder.VideoEncoder.H264
         recorder.setVideoEncoder(encoder)
@@ -123,21 +142,14 @@ object RecordingManager {
         return height - (height % 2) // Ensure even
     }
 
-    private fun getOutputFile(context: Context, settings: SettingsRepository): File {
-        val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
-        val extension = if (settings.outputFormat == "MKV") ".mkv" else ".mp4"
-        val fileName = "Screen_$timestamp$extension"
-
-        var dir = context.getExternalFilesDir(Environment.DIRECTORY_MOVIES)
-        if (dir == null) {
-            dir = context.filesDir
-        }
-        dir?.mkdirs()
-        
-        return File(dir, fileName)
-    }
-
     private fun releaseResources() {
+        try {
+            currentFileDescriptor?.close()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        currentFileDescriptor = null
+
         virtualDisplay?.release()
         mediaRecorder?.reset()
         mediaRecorder?.release()
