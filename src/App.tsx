@@ -8,13 +8,16 @@ import React, { useState, useEffect } from 'react';
 
 const ANDROID_FILES = [
   { name: 'README.md', path: '/my-mobile-app/README.md', language: 'markdown' },
-  { name: 'AndroidManifest.xml', path: '/my-mobile-app/AndroidManifest.xml', language: 'xml' },
-  { name: 'MainActivity.kt', path: '/my-mobile-app/MainActivity.kt', language: 'kotlin' },
-  { name: 'SettingsActivity.kt', path: '/my-mobile-app/SettingsActivity.kt', language: 'kotlin' },
-  { name: 'SettingsRepository.kt', path: '/my-mobile-app/SettingsRepository.kt', language: 'kotlin' },
-  { name: 'RecordingService.kt', path: '/my-mobile-app/RecordingService.kt', language: 'kotlin' },
-  { name: 'RecorderTileService.kt', path: '/my-mobile-app/RecorderTileService.kt', language: 'kotlin' },
-  { name: 'RecordingManager.kt', path: '/my-mobile-app/RecordingManager.kt', language: 'kotlin' }
+  { name: 'AndroidManifest.xml', path: '/my-mobile-app/app/src/main/AndroidManifest.xml', language: 'xml' },
+  { name: 'MainActivity.kt', path: '/my-mobile-app/app/src/main/java/com/example/screenrecorder/MainActivity.kt', language: 'kotlin' },
+  { name: 'SettingsActivity.kt', path: '/my-mobile-app/app/src/main/java/com/example/screenrecorder/SettingsActivity.kt', language: 'kotlin' },
+  { name: 'SettingsRepository.kt', path: '/my-mobile-app/app/src/main/java/com/example/screenrecorder/SettingsRepository.kt', language: 'kotlin' },
+  { name: 'RecordingService.kt', path: '/my-mobile-app/app/src/main/java/com/example/screenrecorder/RecordingService.kt', language: 'kotlin' },
+  { name: 'RecorderTileService.kt', path: '/my-mobile-app/app/src/main/java/com/example/screenrecorder/RecorderTileService.kt', language: 'kotlin' },
+  { name: 'RecordingManager.kt', path: '/my-mobile-app/app/src/main/java/com/example/screenrecorder/RecordingManager.kt', language: 'kotlin' },
+  { name: 'build.gradle.kts (App)', path: '/my-mobile-app/app/build.gradle.kts', language: 'kotlin' },
+  { name: 'activity_main.xml', path: '/my-mobile-app/app/src/main/res/layout/activity_main.xml', language: 'xml' },
+  { name: 'activity_settings.xml', path: '/my-mobile-app/app/src/main/res/layout/activity_settings.xml', language: 'xml' }
 ];
 
 export default function App() {
