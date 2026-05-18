@@ -38,7 +38,11 @@ class RecordingService : Service() {
                 val resultData: Intent? = intent.getParcelableExtra(EXTRA_RESULT_DATA)
                 
                 if (resultData != null) {
-                    startForeground(NOTIFICATION_ID, createNotification("Recording Screen..."))
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        startForeground(NOTIFICATION_ID, createNotification("Recording Screen..."), android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION)
+                    } else {
+                        startForeground(NOTIFICATION_ID, createNotification("Recording Screen..."))
+                    }
                     val projection = projectionManager.getMediaProjection(resultCode, resultData)
                     RecordingManager.startRecording(this, projection)
                 }

@@ -34,7 +34,7 @@ class MainActivity : AppCompatActivity() {
                 putExtra(RecordingService.EXTRA_RESULT_DATA, result.data)
             }
             startForegroundService(serviceIntent)
-            finish() // Minimize app like iOS
+            moveTaskToBack(true) // Minimize app like iOS
         }
     }
 
@@ -55,7 +55,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun setupPreferenceClicks() {
-        findViewById<TableRow>(R.id.row_resolution).setOnClickListener {
+        findViewById<android.widget.LinearLayout>(R.id.row_resolution).setOnClickListener {
             val options = arrayOf("720p", "1080p", "1440p")
             val values = intArrayOf(720, 1080, 1440)
             val currentIndex = values.indexOf(settingsRepository.resolutionHeight).takeIf { it >= 0 } ?: 1
@@ -66,7 +66,7 @@ class MainActivity : AppCompatActivity() {
             }.show()
         }
 
-        findViewById<TableRow>(R.id.row_fps).setOnClickListener {
+        findViewById<android.widget.LinearLayout>(R.id.row_fps).setOnClickListener {
             val options = arrayOf("30fps", "60fps", "90fps")
             val values = intArrayOf(30, 60, 90)
             val currentIndex = values.indexOf(settingsRepository.frameRate).takeIf { it >= 0 } ?: 1
@@ -77,7 +77,7 @@ class MainActivity : AppCompatActivity() {
             }.show()
         }
 
-        findViewById<TableRow>(R.id.row_bitrate).setOnClickListener {
+        findViewById<android.widget.LinearLayout>(R.id.row_bitrate).setOnClickListener {
             val options = arrayOf("5 Mbps", "8 Mbps", "12 Mbps", "16 Mbps")
             val values = intArrayOf(5000000, 8000000, 12000000, 16000000)
             val currentIndex = values.indexOf(settingsRepository.videoBitrate).takeIf { it >= 0 } ?: 2
@@ -88,7 +88,7 @@ class MainActivity : AppCompatActivity() {
             }.show()
         }
 
-        findViewById<TableRow>(R.id.row_orientation).setOnClickListener {
+        findViewById<android.widget.LinearLayout>(R.id.row_orientation).setOnClickListener {
             val options = arrayOf("Auto", "Portrait", "Landscape")
             val currentIndex = settingsRepository.orientationMode
             AlertDialog.Builder(this).setSingleChoiceItems(options, currentIndex) { dialog, which ->
@@ -98,7 +98,7 @@ class MainActivity : AppCompatActivity() {
             }.show()
         }
 
-        findViewById<TableRow>(R.id.row_advanced).setOnClickListener {
+        findViewById<android.widget.LinearLayout>(R.id.row_advanced).setOnClickListener {
             startActivity(Intent(this, SettingsActivity::class.java))
         }
     }

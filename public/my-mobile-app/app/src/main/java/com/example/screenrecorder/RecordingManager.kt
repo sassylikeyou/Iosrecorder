@@ -35,9 +35,8 @@ object RecordingManager {
             MediaRecorder()
         }
 
-        setupMediaRecorder(context, settings)
-
         try {
+            setupMediaRecorder(context, settings)
             mediaRecorder?.prepare()
             virtualDisplay = createVirtualDisplay(settings)
             mediaRecorder?.start()
@@ -65,20 +64,19 @@ object RecordingManager {
         val recorder = mediaRecorder ?: return
 
         // Audio setup
-        when (settings.audioSourceMode) {
-            1 -> recorder.setAudioSource(MediaRecorder.AudioSource.MIC)
-            2 -> recorder.setAudioSource(MediaRecorder.AudioSource.DEFAULT) // Simulating Internal
-            3 -> recorder.setAudioSource(MediaRecorder.AudioSource.MIC) // Simulating Both
-        } // 0 = None
+        var hasAudio = false
+        if (settings.audioSourceMode != 0) {
+            try {
+                recorder.setAudioSource(MediaRecorder.AudioSource.MIC)
+                hasAudio = true
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
 
         recorder.setVideoSource(MediaRecorder.VideoSource.SURFACE)
         
-        val format = if (settings.outputFormat == "MKV" && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            MediaRecorder.OutputFormat.WEBM
-        } else {
-            MediaRecorder.OutputFormat.MPEG_4
-        }
-        recorder.setOutputFormat(format)
+        recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
 
         val outputFile = getOutputFile(context, settings)
         recorder.setOutputFile(outputFile.absolutePath)
@@ -86,8 +84,10 @@ object RecordingManager {
         val encoder = if (settings.videoEncoder == "H265") MediaRecorder.VideoEncoder.HEVC else MediaRecorder.VideoEncoder.H264
         recorder.setVideoEncoder(encoder)
         
-        if (settings.audioSourceMode != 0) {
+        if (hasAudio) {
             recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+            recorder.setAudioEncodingBitRate(128000)
+            recorder.setAudioSamplingRate(44100)
         }
 
         recorder.setVideoSize(getVideoWidth(settings), getVideoHeight(settings))
