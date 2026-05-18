@@ -7,14 +7,14 @@ import { FileCode, FolderOpen, Code2, DownloadCloud, Terminal, Download } from '
 import React, { useState, useEffect } from 'react';
 
 const ANDROID_FILES = [
-  { name: 'README.md', path: '/android-project/README.md', language: 'markdown' },
-  { name: 'AndroidManifest.xml', path: '/android-project/AndroidManifest.xml', language: 'xml' },
-  { name: 'MainActivity.kt', path: '/android-project/MainActivity.kt', language: 'kotlin' },
-  { name: 'SettingsActivity.kt', path: '/android-project/SettingsActivity.kt', language: 'kotlin' },
-  { name: 'SettingsRepository.kt', path: '/android-project/SettingsRepository.kt', language: 'kotlin' },
-  { name: 'RecordingService.kt', path: '/android-project/RecordingService.kt', language: 'kotlin' },
-  { name: 'RecorderTileService.kt', path: '/android-project/RecorderTileService.kt', language: 'kotlin' },
-  { name: 'RecordingManager.kt', path: '/android-project/RecordingManager.kt', language: 'kotlin' }
+  { name: 'README.md', path: '/my-mobile-app/README.md', language: 'markdown' },
+  { name: 'AndroidManifest.xml', path: '/my-mobile-app/AndroidManifest.xml', language: 'xml' },
+  { name: 'MainActivity.kt', path: '/my-mobile-app/MainActivity.kt', language: 'kotlin' },
+  { name: 'SettingsActivity.kt', path: '/my-mobile-app/SettingsActivity.kt', language: 'kotlin' },
+  { name: 'SettingsRepository.kt', path: '/my-mobile-app/SettingsRepository.kt', language: 'kotlin' },
+  { name: 'RecordingService.kt', path: '/my-mobile-app/RecordingService.kt', language: 'kotlin' },
+  { name: 'RecorderTileService.kt', path: '/my-mobile-app/RecorderTileService.kt', language: 'kotlin' },
+  { name: 'RecordingManager.kt', path: '/my-mobile-app/RecordingManager.kt', language: 'kotlin' }
 ];
 
 export default function App() {
@@ -59,7 +59,7 @@ export default function App() {
         <div className="flex-1 overflow-y-auto py-4">
           <div className="px-6 mb-2 flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider text-[#8E8E93]">
             <FolderOpen size={14} />
-            <span>android-project</span>
+            <span>my-mobile-app</span>
           </div>
           <ul className="space-y-1 px-4">
             {ANDROID_FILES.map((file) => (
