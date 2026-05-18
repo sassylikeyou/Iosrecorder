@@ -115,7 +115,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun checkPermissionsAndStart() {
         val permissions = mutableListOf<String>()
-        if (settingsRepository.audioSourceMode == 1 || settingsRepository.audioSourceMode == 3) {
+        if (settingsRepository.audioSourceMode != 0) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
                 permissions.add(Manifest.permission.RECORD_AUDIO)
             }

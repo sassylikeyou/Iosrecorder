@@ -42,7 +42,8 @@ object RecordingManager {
             mediaRecorder?.start()
             isRecording = true
         } catch (e: Exception) {
-            e.printStackTrace()
+            android.util.Log.e("ScreenRecorder", "Failed to start recording", e)
+            // Try fallback: lower resolution or simpler settings
             releaseResources()
         }
     }
@@ -127,13 +128,11 @@ object RecordingManager {
         val extension = if (settings.outputFormat == "MKV") ".mkv" else ".mp4"
         val fileName = "Screen_$timestamp$extension"
 
-        val dir = if (settings.outputFolderUri != null) {
-            // Simplified: In a full app, we use ContentResolver to write to the SAF DocumentFile
-            // Here we fallback to Movies directory if SAF logic is omitted for brevity
-            context.getExternalFilesDir(Environment.DIRECTORY_MOVIES)
-        } else {
-            context.getExternalFilesDir(Environment.DIRECTORY_MOVIES)
+        var dir = context.getExternalFilesDir(Environment.DIRECTORY_MOVIES)
+        if (dir == null) {
+            dir = context.filesDir
         }
+        dir?.mkdirs()
         
         return File(dir, fileName)
     }

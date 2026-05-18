@@ -43,8 +43,14 @@ class RecordingService : Service() {
                     } else {
                         startForeground(NOTIFICATION_ID, createNotification("Recording Screen..."))
                     }
-                    val projection = projectionManager.getMediaProjection(resultCode, resultData)
-                    RecordingManager.startRecording(this, projection)
+                    try {
+                        val projection = projectionManager.getMediaProjection(resultCode, resultData)
+                        RecordingManager.startRecording(this, projection)
+                    } catch (e: Exception) {
+                        android.util.Log.e("RecordingService", "Error getting projection", e)
+                        stopForeground(true)
+                        stopSelf()
+                    }
                 }
             }
             ACTION_STOP -> {
