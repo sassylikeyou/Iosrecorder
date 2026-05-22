@@ -649,6 +649,14 @@ class MainActivity : AppCompatActivity() {
 
         val encoderString = if (settingsRepository.videoEncoder == "H265") "H.265 / HEVC" else "H.264 / AVC"
         viewSettings.findViewById<TextView>(R.id.val_encoder)?.text = encoderString
+        
+        val encoderRow = viewSettings.findViewById<LinearLayout>(R.id.row_encoder)
+        val encoderDesc = encoderRow?.getChildAt(1) as? TextView
+        if (settingsRepository.videoEncoder == "H265") {
+            encoderDesc?.text = "HEVC reduces file size but may not be compatible with older devices."
+        } else {
+            encoderDesc?.text = "H.264 is highly compatible with most standard video players."
+        }
 
         val mbSize = settingsRepository.maxFileSize / (1024 * 1024)
         val limitString = if (mbSize <= 0) "No Limit" else if (mbSize >= 1024 && mbSize % 1024 == 0L) "${mbSize / 1024} GB" else "$mbSize MB"
@@ -662,6 +670,30 @@ class MainActivity : AppCompatActivity() {
         val switchShowTouches = viewSettings.findViewById<Switch>(R.id.switch_show_touches)
         switchShowTouches?.setOnCheckedChangeListener(null)
         switchShowTouches?.isChecked = settingsRepository.showTouches
+        
+        val isNightMode = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+        if (isNightMode) {
+            viewSettings.setBackgroundColor(android.graphics.Color.parseColor("#121212"))
+            val rowIds = listOf(R.id.row_export_code, R.id.row_reset_defaults)
+            for (id in rowIds) {
+                viewSettings.findViewById<View>(id)?.background?.mutate()?.setTint(android.graphics.Color.parseColor("#1C1C1E"))
+            }
+            val parentIds = listOf(R.id.row_resolution, R.id.row_mic, R.id.row_theme)
+            for (id in parentIds) {
+                (viewSettings.findViewById<View>(id)?.parent as? View)?.background?.mutate()?.setTint(android.graphics.Color.parseColor("#1C1C1E"))
+            }
+            // Specifically fetch About container by grabbing parent of an ID inside it or the layout index, but About card has no ID.
+            // Let's use the container loop to be safe and cover all card rows inside the scrollView.
+            val container = viewSettings.getChildAt(0) as? LinearLayout
+            container?.let {
+                for (i in 0 until it.childCount) {
+                    val child = it.getChildAt(i)
+                    if (child is LinearLayout && child.id != R.id.row_encoder) {
+                        child.background?.mutate()?.setTint(android.graphics.Color.parseColor("#1C1C1E"))
+                    }
+                }
+            }
+        }
         
         setupSettingsView() // reattach listeners
     }
