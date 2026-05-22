@@ -348,17 +348,32 @@ class MainActivity : AppCompatActivity() {
                     2 -> settingsRepository.maxFileSize = 2048L * 1024L * 1024L
                     3 -> settingsRepository.maxFileSize = 4096L * 1024L * 1024L
                     4 -> {
+                        val container = android.widget.LinearLayout(this).apply {
+                            orientation = android.widget.LinearLayout.HORIZONTAL
+                            setPadding(50, 20, 50, 0)
+                        }
                         val editText = android.widget.EditText(this).apply {
                             inputType = android.text.InputType.TYPE_CLASS_NUMBER
-                            hint = "Size in MB"
+                            hint = "Size value"
+                            layoutParams = android.widget.LinearLayout.LayoutParams(0, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
                         }
+                        val spinner = android.widget.Spinner(this).apply {
+                            val adapter = android.widget.ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, arrayOf("MB", "GB"))
+                            this.adapter = adapter
+                            layoutParams = android.widget.LinearLayout.LayoutParams(android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT)
+                        }
+                        container.addView(editText)
+                        container.addView(spinner)
+                        
                         AlertDialog.Builder(this)
-                            .setTitle("Custom File Size Limit (MB)")
-                            .setView(editText)
+                            .setTitle("Custom File Size Limit")
+                            .setView(container)
                             .setPositiveButton("Set") { _, _ ->
-                                val mb = editText.text.toString().toLongOrNull()
-                                if (mb != null && mb > 0) {
-                                    settingsRepository.maxFileSize = mb * 1024L * 1024L
+                                val num = editText.text.toString().toLongOrNull()
+                                if (num != null && num > 0) {
+                                    val isGb = spinner.selectedItem.toString() == "GB"
+                                    val multiplier = if (isGb) 1024L * 1024L * 1024L else 1024L * 1024L
+                                    settingsRepository.maxFileSize = num * multiplier
                                     updateSettingsUI()
                                 }
                             }
@@ -675,8 +690,9 @@ class MainActivity : AppCompatActivity() {
         if (isNightMode) {
             viewSettings.setBackgroundColor(android.graphics.Color.parseColor("#121212"))
             val settingsCards = arrayOf(R.id.row_theme, R.id.row_resolution, R.id.row_fps, R.id.row_countdown, R.id.row_bitrate, R.id.row_encoder, R.id.row_max_file_size, R.id.row_format, R.id.row_export_code, R.id.row_reset_defaults)
+            val cardColor = android.graphics.Color.parseColor("#1C1C1E")
             for (id in settingsCards) {
-                viewSettings.findViewById<View>(id)?.background?.mutate()?.setTint(android.graphics.Color.parseColor("#1C1C1E"))
+                viewSettings.findViewById<View>(id)?.backgroundTintList = android.content.res.ColorStateList.valueOf(cardColor)
             }
         }
         
