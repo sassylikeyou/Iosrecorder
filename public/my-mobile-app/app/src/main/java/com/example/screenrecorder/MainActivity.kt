@@ -674,24 +674,9 @@ class MainActivity : AppCompatActivity() {
         val isNightMode = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
         if (isNightMode) {
             viewSettings.setBackgroundColor(android.graphics.Color.parseColor("#121212"))
-            val rowIds = listOf(R.id.row_export_code, R.id.row_reset_defaults)
-            for (id in rowIds) {
+            val settingsCards = arrayOf(R.id.row_theme, R.id.row_resolution, R.id.row_fps, R.id.row_countdown, R.id.row_bitrate, R.id.row_encoder, R.id.row_max_file_size, R.id.row_format, R.id.row_export_code, R.id.row_reset_defaults)
+            for (id in settingsCards) {
                 viewSettings.findViewById<View>(id)?.background?.mutate()?.setTint(android.graphics.Color.parseColor("#1C1C1E"))
-            }
-            val parentIds = listOf(R.id.row_resolution, R.id.row_mic, R.id.row_theme)
-            for (id in parentIds) {
-                (viewSettings.findViewById<View>(id)?.parent as? View)?.background?.mutate()?.setTint(android.graphics.Color.parseColor("#1C1C1E"))
-            }
-            // Specifically fetch About container by grabbing parent of an ID inside it or the layout index, but About card has no ID.
-            // Let's use the container loop to be safe and cover all card rows inside the scrollView.
-            val container = viewSettings.getChildAt(0) as? LinearLayout
-            container?.let {
-                for (i in 0 until it.childCount) {
-                    val child = it.getChildAt(i)
-                    if (child is LinearLayout && child.id != R.id.row_encoder) {
-                        child.background?.mutate()?.setTint(android.graphics.Color.parseColor("#1C1C1E"))
-                    }
-                }
             }
         }
         
