@@ -8,15 +8,15 @@ class SettingsRepository(context: Context) {
     private val prefs: SharedPreferences = context.getSharedPreferences("RecorderSettings", Context.MODE_PRIVATE)
 
     var resolutionHeight: Int
-        get() = prefs.getInt("resolutionHeight", 1080)
+        get() = prefs.getInt("resolutionHeight", 720)
         set(value) = prefs.edit().putInt("resolutionHeight", value).apply()
 
     var frameRate: Int
-        get() = prefs.getInt("frameRate", 60)
+        get() = prefs.getInt("frameRate", 30)
         set(value) = prefs.edit().putInt("frameRate", value).apply()
 
     var videoBitrate: Int
-        get() = prefs.getInt("videoBitrate", 5_000_000) // 5 Mbps default
+        get() = prefs.getInt("videoBitrate", 8_000_000) // 8 Mbps default
         set(value) = prefs.edit().putInt("videoBitrate", value).apply()
 
     // 0 = AUTO, 1 = PORTRAIT, 2 = LANDSCAPE

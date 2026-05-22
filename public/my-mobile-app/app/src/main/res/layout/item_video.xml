@@ -12,12 +12,12 @@
     android:gravity="center_vertical">
 
     <ImageView
-        android:layout_width="40dp"
-        android:layout_height="40dp"
+        android:id="@+id/img_thumbnail"
+        android:layout_width="45dp"
+        android:layout_height="45dp"
         android:src="@android:drawable/ic_media_play"
-        app:tint="#8B5CF6"
+        android:scaleType="centerCrop"
         android:background="#208B5CF6"
-        android:padding="8dp"
         android:layout_marginEnd="16dp" />
 
     <LinearLayout

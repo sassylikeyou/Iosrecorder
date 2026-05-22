@@ -32,6 +32,8 @@ object RecordingManager {
     private var currentOutputUri: Uri? = null
     private var currentFallbackFile: File? = null
 
+    private var handlerThread: android.os.HandlerThread? = null
+
     fun startRecording(context: Context, projection: MediaProjection): Boolean {
         if (isRecording) return true
 
@@ -56,6 +58,10 @@ object RecordingManager {
         }
 
         return try {
+            handlerThread = android.os.HandlerThread("RecordingHandlerThread", android.os.Process.THREAD_PRIORITY_BACKGROUND)
+            handlerThread?.start()
+            val backgroundHandler = android.os.Handler(handlerThread!!.looper)
+
             mediaProjection?.registerCallback(object : MediaProjection.Callback() {
                 override fun onStop() {
                     val stopIntent = android.content.Intent(context, RecordingService::class.java).apply {
@@ -63,7 +69,7 @@ object RecordingManager {
                     }
                     context.startService(stopIntent)
                 }
-            }, android.os.Handler(android.os.Looper.getMainLooper()))
+            }, backgroundHandler)
             
             setupMediaRecorder(context, settings)
             mediaRecorder?.prepare()
@@ -133,6 +139,23 @@ object RecordingManager {
         recorder.setVideoSource(MediaRecorder.VideoSource.SURFACE)
         recorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
 
+        val encoder = if (settings.videoEncoder == "H265") MediaRecorder.VideoEncoder.HEVC else MediaRecorder.VideoEncoder.H264
+        recorder.setVideoEncoder(encoder)
+        
+        if (hasAudio) {
+            recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+            recorder.setAudioEncodingBitRate(128000)
+            recorder.setAudioSamplingRate(44100)
+        }
+
+        recorder.setVideoSize(getVideoWidth(context, settings), getVideoHeight(context, settings))
+        recorder.setVideoEncodingBitRate(settings.videoBitrate)
+        recorder.setVideoFrameRate(settings.frameRate)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // Additional setting that can help frame dropping on newer Android models
+            recorder.setCaptureRate(settings.frameRate.toDouble())
+        }
+
         val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
         val extension = if (settings.outputFormat == "MKV") ".mkv" else ".mp4"
         val fileName = "Screen_$timestamp$extension"
@@ -158,19 +181,6 @@ object RecordingManager {
             currentFallbackFile = fallbackFile
             recorder.setOutputFile(fallbackFile.absolutePath)
         }
-
-        val encoder = if (settings.videoEncoder == "H265") MediaRecorder.VideoEncoder.HEVC else MediaRecorder.VideoEncoder.H264
-        recorder.setVideoEncoder(encoder)
-        
-        if (hasAudio) {
-            recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-            recorder.setAudioEncodingBitRate(128000)
-            recorder.setAudioSamplingRate(44100)
-        }
-
-        recorder.setVideoSize(getVideoWidth(context, settings), getVideoHeight(context, settings))
-        recorder.setVideoEncodingBitRate(settings.videoBitrate)
-        recorder.setVideoFrameRate(settings.frameRate)
 
         if (settings.maxFileSize > 0L) {
             recorder.setMaxFileSize(settings.maxFileSize)
@@ -269,5 +279,8 @@ object RecordingManager {
         virtualDisplay = null
         mediaRecorder = null
         mediaProjection = null
+        
+        handlerThread?.quitSafely()
+        handlerThread = null
     }
 }

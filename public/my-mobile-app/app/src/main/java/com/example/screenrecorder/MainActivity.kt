@@ -275,6 +275,7 @@ class MainActivity : AppCompatActivity() {
                 androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(mode)
                 updateSettingsUI()
                 dialog.dismiss()
+                recreate()
             }.show()
         }
 
@@ -461,6 +462,7 @@ class MainActivity : AppCompatActivity() {
             android.provider.MediaStore.Video.Media.DATE_ADDED + " DESC"
         )
         val files = mutableListOf<VideoFile>()
+        val retriever = android.media.MediaMetadataRetriever()
         query?.use { cursor ->
             val idColumn = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Video.Media._ID)
             val nameColumn = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Video.Media.DISPLAY_NAME)
@@ -470,9 +472,26 @@ class MainActivity : AppCompatActivity() {
                 val name = cursor.getString(nameColumn)
                 val size = cursor.getLong(sizeColumn)
                 val contentUri: Uri = android.content.ContentUris.withAppendedId(android.provider.MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id)
-                files.add(VideoFile(contentUri, name, size))
+                
+                var thumbnail: android.graphics.Bitmap? = null
+                try {
+                    retriever.setDataSource(this, contentUri)
+                    thumbnail = retriever.getFrameAtTime(1000000) // 1 second in microseconds
+                    thumbnail?.let {
+                        val scaled = android.graphics.Bitmap.createScaledBitmap(it, 120, 120, true)
+                        if (scaled != it) {
+                            it.recycle()
+                        }
+                        thumbnail = scaled
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+
+                files.add(VideoFile(contentUri, name, size, thumbnail))
             }
         }
+        try { retriever.release() } catch (e: Exception) {}
         if (files.isEmpty()) {
             txtEmpty.visibility = View.VISIBLE
         } else {
@@ -813,7 +832,7 @@ class MainActivity : AppCompatActivity() {
     }
 }
 
-data class VideoFile(val uri: Uri, val name: String, val size: Long)
+data class VideoFile(val uri: Uri, val name: String, val size: Long, val thumbnail: android.graphics.Bitmap?)
 
 class LibraryAdapter(
     private val files: List<VideoFile>,
@@ -824,6 +843,7 @@ class LibraryAdapter(
 ) : androidx.recyclerview.widget.RecyclerView.Adapter<LibraryAdapter.ViewHolder>() {
 
     class ViewHolder(view: View) : androidx.recyclerview.widget.RecyclerView.ViewHolder(view) {
+        val thumbnail: ImageView = view.findViewById(R.id.img_thumbnail)
         val title: TextView = view.findViewById(R.id.txt_title)
         val subtitle: TextView = view.findViewById(R.id.txt_subtitle)
         val btnDelete: ImageView = view.findViewById(R.id.btn_delete)
@@ -840,6 +860,14 @@ class LibraryAdapter(
         val file = files[position]
         holder.title.text = file.name
         holder.subtitle.text = "${file.size / (1024 * 1024)} MB"
+        
+        if (file.thumbnail != null) {
+            holder.thumbnail.setImageBitmap(file.thumbnail)
+            holder.thumbnail.setPadding(0, 0, 0, 0)
+        } else {
+            holder.thumbnail.setImageResource(android.R.drawable.ic_media_play)
+            holder.thumbnail.setPadding(8, 8, 8, 8)
+        }
         
         holder.itemView.setOnClickListener { onClick(file) }
         
