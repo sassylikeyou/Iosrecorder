@@ -1,0 +1,67 @@
+{
+  "project_info": {
+    "project_number": "88799723151",
+    "project_id": "madscientist-c9ad4",
+    "storage_bucket": "madscientist-c9ad4.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:88799723151:android:bd849f126a886265fd3afa",
+        "android_client_info": {
+          "package_name": "Com.MADSCIENTIST"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBTWJO8oqhU51bX9jiBkpLDwpSL_onhNh0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:88799723151:android:55e51ac10483961efd3afa",
+        "android_client_info": {
+          "package_name": "com.MADSCIENTIST"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBTWJO8oqhU51bX9jiBkpLDwpSL_onhNh0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:88799723151:android:d2bcb6d288beeac1fd3afa",
+        "android_client_info": {
+          "package_name": "com.MADSCIENTIST.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBTWJO8oqhU51bX9jiBkpLDwpSL_onhNh0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

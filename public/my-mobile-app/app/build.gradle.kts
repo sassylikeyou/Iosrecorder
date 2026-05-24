@@ -1,4 +1,5 @@
 plugins {
+    id('com.google.gms.google-services')
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
@@ -8,7 +9,7 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.screenrecorder"
+        applicationId = "com.MADSCIENTIST.app"
         minSdk = 26
         targetSdk = 34
         versionCode = 1
@@ -34,6 +35,8 @@ android {
 }
 
 dependencies {
+    implementation(platform("com.google.firebase:firebase-bom:34.13.0"))
+    implementation("com.google.firebase:firebase-analytics")
     implementation("androidx.core:core-ktx:1.12.0")
     implementation("androidx.appcompat:appcompat:1.6.1")
     implementation("com.google.android.material:material:1.11.0")
