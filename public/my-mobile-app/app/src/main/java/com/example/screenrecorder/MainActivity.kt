@@ -461,14 +461,15 @@ class MainActivity : AppCompatActivity() {
                 .show()
         }
 
-        val switchMic = viewSettings.findViewById<Switch>(R.id.switch_mic)
-        switchMic.setOnCheckedChangeListener { _, isChecked ->
-            if (isChecked) {
-                settingsRepository.audioSourceMode = if (viewSettings.findViewById<Switch>(R.id.switch_sys_audio).isChecked) 3 else 1
-            } else {
-                settingsRepository.audioSourceMode = if (viewSettings.findViewById<Switch>(R.id.switch_sys_audio).isChecked) 2 else 0
-            }
-            updateSettingsUI()
+        viewSettings.findViewById<View>(R.id.row_mic)?.setOnClickListener {
+            val options = arrayOf("Mute", "Microphone", "Internal Audio", "Internal & Mic")
+            val values = intArrayOf(0, 1, 2, 3)
+            val currentIndex = values.indexOf(settingsRepository.audioSourceMode).takeIf { it >= 0 } ?: 1
+            AlertDialog.Builder(this).setSingleChoiceItems(options, currentIndex) { dialog, which ->
+                settingsRepository.audioSourceMode = values[which]
+                updateSettingsUI()
+                dialog.dismiss()
+            }.show()
         }
         
         val switchShowTouches = viewSettings.findViewById<Switch>(R.id.switch_show_touches)
@@ -492,7 +493,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadLibrary() {
-        val txtEmpty = viewLibrary.findViewById<TextView>(R.id.txt_empty)
+        val txtEmpty = viewLibrary.findViewById<View>(R.id.empty_state_container)
         val resolver = contentResolver
         val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             android.provider.MediaStore.Video.Media.getContentUri(android.provider.MediaStore.VOLUME_EXTERNAL_PRIMARY)
@@ -784,9 +785,14 @@ class MainActivity : AppCompatActivity() {
         viewSettings.findViewById<TextView>(R.id.val_max_file_size)?.text = limitString
 
         val source = settingsRepository.audioSourceMode
-        viewSettings.findViewById<Switch>(R.id.switch_mic).setOnCheckedChangeListener(null)
-        
-        viewSettings.findViewById<Switch>(R.id.switch_mic).isChecked = (source == 1 || source == 3)
+        val sourceString = when(source) {
+            0 -> "Mute"
+            1 -> "Microphone"
+            2 -> "Internal Audio"
+            3 -> "Internal & Mic"
+            else -> "Microphone"
+        }
+        viewSettings.findViewById<TextView>(R.id.val_audio_source)?.text = sourceString
 
         val switchShowTouches = viewSettings.findViewById<Switch>(R.id.switch_show_touches)
         switchShowTouches?.setOnCheckedChangeListener(null)

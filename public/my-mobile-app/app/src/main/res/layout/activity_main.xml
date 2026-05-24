@@ -4,13 +4,22 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#F8FAFC">
+    android:background="#0A0A0A">
 
     <FrameLayout
         android:id="@+id/fragment_container"
         android:layout_width="0dp"
         android:layout_height="0dp"
         app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/tab_bar_divider"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <View
+        android:id="@+id/tab_bar_divider"
+        android:layout_width="0dp"
+        android:layout_height="1dp"
+        android:background="#1C1C1E"
         app:layout_constraintBottom_toTopOf="@id/tab_bar"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
@@ -20,10 +29,10 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:background="#FFFFFF"
+        android:background="#050505"
         android:paddingVertical="12dp"
         android:elevation="24dp"
-        android:outlineSpotShadowColor="#1A000000"
+        android:outlineSpotShadowColor="#00000000"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">
@@ -41,14 +50,14 @@
                 android:layout_width="24dp"
                 android:layout_height="24dp"
                 android:src="@drawable/ic_record_circle"
-                app:tint="#8B5CF6" />
+                app:tint="#A855F7" />
             <TextView
                 android:id="@+id/text_record"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Record"
                 android:textSize="10sp"
-                android:textColor="#8B5CF6"
+                android:textColor="#A855F7"
                 android:textStyle="bold"
                 android:layout_marginTop="4dp" />
         </LinearLayout>

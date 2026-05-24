@@ -1,0 +1,40 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="120"
+    android:viewportHeight="120">
+    <!-- 3 Diamond Stars -->
+    <path
+        android:fillColor="#4A4A52"
+        android:pathData="M39.5,45.5 L40.5,42.5 L43.5,41.5 L40.5,40.5 L39.5,37.5 L38.5,40.5 L35.5,41.5 L38.5,42.5 Z" />
+    <path
+        android:fillColor="#4A4A52"
+        android:pathData="M60.5,40 L62,34 L68,32.5 L62,31 L60.5,25 L59,31 L53,32.5 L59,34 Z" />
+    <path
+        android:fillColor="#4A4A52"
+        android:pathData="M78.5,45.5 L80,41 L84.5,39.5 L80,38 L78.5,33.5 L77,38 L72.5,39.5 L77,41 Z" />
+        
+    <!-- Folder body -->
+    <path
+        android:strokeColor="#4A4A52"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M31,45 L50,45 L56,51 L89,51 C93.4,51 97,54.6 97,59 L97,85 C97,89.4 93.4,93 89,93 L31,93 C26.6,93 23,89.4 23,85 L23,53 C23,48.6 26.6,45 31,45 Z" />
+    
+    <!-- Folder inner flap/line -->
+    <path
+        android:strokeColor="#4A4A52"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M23,54 L97,54" />
+
+    <!-- Play icon -->
+    <path
+        android:strokeColor="#4A4A52"
+        android:strokeWidth="3"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M56.5,65 L66.5,72 L56.5,79 Z" />
+</vector>
