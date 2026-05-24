@@ -166,7 +166,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         val isNightMode = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
-        val navBar = findViewById<LinearLayout>(R.id.bottom_nav)
+        val navBar = findViewById<LinearLayout>(R.id.tab_bar)
         // Set an elevation depending on theme
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             navBar.elevation = if (isNightMode) 0f else 24f
