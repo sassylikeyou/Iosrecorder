@@ -80,6 +80,11 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putInt("currentTabIndex", currentTabIndex)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         settingsRepository = SettingsRepository(this)
@@ -118,7 +123,8 @@ class MainActivity : AppCompatActivity() {
 
         startBackgroundAnimation()
 
-        switchTab(0)
+        val initialTab = savedInstanceState?.getInt("currentTabIndex", 0) ?: 0
+        switchTab(initialTab)
     }
 
     private fun switchTab(index: Int) {
@@ -159,8 +165,38 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        val isNightMode = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+        val navBar = findViewById<LinearLayout>(R.id.bottom_nav)
+        // Set an elevation depending on theme
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            navBar.elevation = if (isNightMode) 0f else 24f
+            val divider = findViewById<View>(android.R.id.custom) // using custom ID because R.id isn't dynamically registered without xml.
+            if (divider == null) {
+                val newDivider = View(this).apply {
+                    id = android.R.id.custom
+                    layoutParams = android.view.ViewGroup.MarginLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, 1).apply {
+                        val lp = navBar.layoutParams as? androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
+                        if (lp != null) {
+                            // Can't reliably insert constraint layout divider linearly inside constraint layout without matching constraints
+                        }
+                    }
+                    setBackgroundColor(if (isNightMode) Color.parseColor("#1C1C1E") else Color.parseColor("#F3F4F6"))
+                }
+                // Skip injecting programmatically if constraint layout is too complex, let's just make the navBar have a top border by itself.
+                navBar.setBackgroundColor(if (isNightMode) Color.parseColor("#0A0A14") else Color.parseColor("#FFFFFF"))
+            }
+        }
+        
         val colorActive = Color.parseColor("#8B5CF6")
-        val colorInactive = Color.parseColor("#8E8E93")
+        val colorInactive = if (isNightMode) Color.parseColor("#8E8E93") else Color.parseColor("#6B7280")
+        
+        if (isNightMode) {
+            navBar.setBackgroundColor(Color.parseColor("#0A0A14"))
+            container.setBackgroundColor(Color.parseColor("#0A0A14"))
+        } else {
+            navBar.setBackgroundColor(Color.parseColor("#FFFFFF"))
+            container.setBackgroundColor(Color.parseColor("#F8FAFC"))
+        }
 
         val ivRecord = findViewById<ImageView>(R.id.icon_record)
         val ivLibrary = findViewById<ImageView>(R.id.icon_library)
@@ -513,13 +549,50 @@ class MainActivity : AppCompatActivity() {
             txtEmpty.visibility = View.GONE
         }
         val recyclerView = viewLibrary.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.recycler_view)
-        recyclerView.adapter = LibraryAdapter(
+        
+        fun updateSelectionUI(adapter: LibraryAdapter) {
+            val selectionToolbar = viewLibrary.findViewById<LinearLayout>(R.id.selection_toolbar)
+            val txtSelectionCount = viewLibrary.findViewById<TextView>(R.id.txt_selection_count)
+            val txtTitle = viewLibrary.findViewById<TextView>(R.id.txt_title)
+            
+            if (adapter.isSelectionMode) {
+                selectionToolbar.visibility = View.VISIBLE
+                txtTitle.visibility = View.INVISIBLE
+                txtSelectionCount.text = "${adapter.selectedFiles.size} selected"
+            } else {
+                selectionToolbar.visibility = View.GONE
+                txtTitle.visibility = View.VISIBLE
+            }
+            
+            val isNightMode = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+            if (isNightMode) {
+                selectionToolbar.setBackgroundColor(Color.parseColor("#1C1C1E"))
+                txtSelectionCount.setTextColor(Color.WHITE)
+            } else {
+                selectionToolbar.setBackgroundColor(Color.parseColor("#F2F2F7"))
+                txtSelectionCount.setTextColor(Color.BLACK)
+            }
+        }
+        
+        val adapter = LibraryAdapter(
             files,
             onClick = { file ->
-                val intent = Intent(Intent.ACTION_VIEW, file.uri)
-                intent.setDataAndType(file.uri, "video/*")
-                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                startActivity(intent)
+                val currentAdapter = recyclerView.adapter as LibraryAdapter
+                if (currentAdapter.isSelectionMode) {
+                    updateSelectionUI(currentAdapter)
+                } else {
+                    val intent = Intent(Intent.ACTION_VIEW, file.uri)
+                    intent.setDataAndType(file.uri, "video/*")
+                    intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    startActivity(intent)
+                }
+            },
+            onLongClick = { file ->
+                val currentAdapter = recyclerView.adapter as LibraryAdapter
+                if (!currentAdapter.isSelectionMode) {
+                    currentAdapter.toggleSelection(file)
+                    updateSelectionUI(currentAdapter)
+                }
             },
             onDelete = { file ->
                 deleteVideo(file)
@@ -531,6 +604,39 @@ class MainActivity : AppCompatActivity() {
                 shareVideo(file)
             }
         )
+        recyclerView.adapter = adapter
+        
+        val controller = android.view.animation.AnimationUtils.loadLayoutAnimation(this, R.anim.layout_animation_fall_down)
+        recyclerView.layoutAnimation = controller
+        recyclerView.scheduleLayoutAnimation()
+        
+        viewLibrary.findViewById<View>(R.id.btn_cancel_selection).setOnClickListener {
+            adapter.clearSelection()
+            updateSelectionUI(adapter)
+        }
+        
+        viewLibrary.findViewById<View>(R.id.btn_delete_selected).setOnClickListener {
+            if (adapter.selectedFiles.isNotEmpty()) {
+                val selectedFilesList = adapter.selectedFiles.toList()
+                val alert = android.app.AlertDialog.Builder(this)
+                alert.setTitle("Delete Videos")
+                alert.setMessage("Are you sure you want to delete ${selectedFilesList.size} selected video(s)?")
+                alert.setPositiveButton("Delete") { _, _ ->
+                    selectedFilesList.forEach { file ->
+                        try {
+                            contentResolver.delete(file.uri, null, null)
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }
+                    adapter.clearSelection()
+                    updateSelectionUI(adapter)
+                    loadLibrary()
+                }
+                alert.setNegativeButton("Cancel", null)
+                alert.show()
+            }
+        }
     }
 
     private fun startPulseAnimation() {
@@ -688,12 +794,23 @@ class MainActivity : AppCompatActivity() {
         
         val isNightMode = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
         if (isNightMode) {
-            viewSettings.setBackgroundColor(android.graphics.Color.parseColor("#121212"))
+            viewSettings.setBackgroundColor(android.graphics.Color.parseColor("#0A0A14"))
             val settingsCards = arrayOf(R.id.row_theme, R.id.row_resolution, R.id.row_fps, R.id.row_countdown, R.id.row_bitrate, R.id.row_encoder, R.id.row_max_file_size, R.id.row_format, R.id.row_export_code, R.id.row_reset_defaults)
             val cardColor = android.graphics.Color.parseColor("#1C1C1E")
             for (id in settingsCards) {
                 viewSettings.findViewById<View>(id)?.backgroundTintList = android.content.res.ColorStateList.valueOf(cardColor)
             }
+            
+            // Audio & Touches container
+            (viewSettings.findViewById<View>(R.id.row_mic)?.parent as? View)?.backgroundTintList = android.content.res.ColorStateList.valueOf(cardColor)
+        } else {
+            viewSettings.setBackgroundColor(android.graphics.Color.parseColor("#F8FAFC"))
+            val settingsCards = arrayOf(R.id.row_theme, R.id.row_resolution, R.id.row_fps, R.id.row_countdown, R.id.row_bitrate, R.id.row_encoder, R.id.row_max_file_size, R.id.row_format, R.id.row_export_code, R.id.row_reset_defaults)
+            val cardColor = android.graphics.Color.parseColor("#FFFFFF")
+            for (id in settingsCards) {
+                viewSettings.findViewById<View>(id)?.backgroundTintList = android.content.res.ColorStateList.valueOf(cardColor)
+            }
+            (viewSettings.findViewById<View>(R.id.row_mic)?.parent as? View)?.backgroundTintList = android.content.res.ColorStateList.valueOf(cardColor)
         }
         
         setupSettingsView() // reattach listeners
@@ -806,22 +923,29 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun deleteVideo(file: VideoFile) {
-        try {
-            contentResolver.delete(file.uri, null, null)
-            loadLibrary()
-        } catch (e: SecurityException) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                val recoverableSecurityException = e as? android.app.RecoverableSecurityException
-                val intentSender = recoverableSecurityException?.userAction?.actionIntent?.intentSender
-                if (intentSender != null) {
-                    startIntentSenderForResult(intentSender, 100, null, 0, 0, 0, null)
+        AlertDialog.Builder(this)
+            .setTitle("Delete Video")
+            .setMessage("Are you sure you want to delete this video?")
+            .setPositiveButton("Delete") { _, _ ->
+                try {
+                    contentResolver.delete(file.uri, null, null)
+                    loadLibrary()
+                } catch (e: SecurityException) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        val recoverableSecurityException = e as? android.app.RecoverableSecurityException
+                        val intentSender = recoverableSecurityException?.userAction?.actionIntent?.intentSender
+                        if (intentSender != null) {
+                            startIntentSenderForResult(intentSender, 100, null, 0, 0, 0, null)
+                        }
+                    } else {
+                        android.widget.Toast.makeText(this, "Permission denied to delete video", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                } catch (e: Exception) {
+                    android.widget.Toast.makeText(this, "Failed to delete video", android.widget.Toast.LENGTH_SHORT).show()
                 }
-            } else {
-                android.widget.Toast.makeText(this, "Permission denied to delete video", android.widget.Toast.LENGTH_SHORT).show()
             }
-        } catch (e: Exception) {
-            android.widget.Toast.makeText(this, "Failed to delete video", android.widget.Toast.LENGTH_SHORT).show()
-        }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun renameVideo(file: VideoFile) {
@@ -870,13 +994,37 @@ data class VideoFile(val uri: Uri, val name: String, val size: Long, val thumbna
 class LibraryAdapter(
     private val files: List<VideoFile>,
     private val onClick: (VideoFile) -> Unit,
+    private val onLongClick: (VideoFile) -> Unit,
     private val onDelete: (VideoFile) -> Unit,
     private val onRename: (VideoFile) -> Unit,
     private val onShare: (VideoFile) -> Unit
 ) : androidx.recyclerview.widget.RecyclerView.Adapter<LibraryAdapter.ViewHolder>() {
 
+    val selectedFiles = mutableSetOf<VideoFile>()
+    var isSelectionMode = false
+
+    fun toggleSelection(file: VideoFile) {
+        if (selectedFiles.contains(file)) {
+            selectedFiles.remove(file)
+            if (selectedFiles.isEmpty()) {
+                isSelectionMode = false
+            }
+        } else {
+            selectedFiles.add(file)
+            isSelectionMode = true
+        }
+        notifyDataSetChanged()
+    }
+
+    fun clearSelection() {
+        selectedFiles.clear()
+        isSelectionMode = false
+        notifyDataSetChanged()
+    }
+
     class ViewHolder(view: View) : androidx.recyclerview.widget.RecyclerView.ViewHolder(view) {
         val thumbnail: ImageView = view.findViewById(R.id.img_thumbnail)
+        val imgCheck: ImageView? = view.findViewById(R.id.img_check)
         val title: TextView = view.findViewById(R.id.txt_title)
         val subtitle: TextView = view.findViewById(R.id.txt_subtitle)
         val btnDelete: ImageView = view.findViewById(R.id.btn_delete)
@@ -902,7 +1050,40 @@ class LibraryAdapter(
             holder.thumbnail.setPadding(8, 8, 8, 8)
         }
         
-        holder.itemView.setOnClickListener { onClick(file) }
+        val isSelected = selectedFiles.contains(file)
+        if (isSelectionMode) {
+            holder.btnDelete.visibility = View.GONE
+            holder.btnMore.visibility = View.GONE
+            holder.imgCheck?.visibility = View.VISIBLE
+            holder.imgCheck?.setImageResource(if (isSelected) android.R.drawable.checkbox_on_background else android.R.drawable.checkbox_off_background)
+            val isNightMode = (holder.itemView.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+            val tintColor = if (isSelected) {
+                if (isNightMode) android.graphics.Color.parseColor("#1C1C3E") else android.graphics.Color.parseColor("#E0E7FF")
+            } else {
+                if (isNightMode) android.graphics.Color.parseColor("#1C1C1E") else android.graphics.Color.parseColor("#FFFFFF")
+            }
+            holder.itemView.backgroundTintList = android.content.res.ColorStateList.valueOf(tintColor)
+        } else {
+            holder.btnDelete.visibility = View.VISIBLE
+            holder.btnMore.visibility = View.VISIBLE
+            holder.imgCheck?.visibility = View.GONE
+            val isNightMode = (holder.itemView.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+            holder.itemView.backgroundTintList = android.content.res.ColorStateList.valueOf(if (isNightMode) android.graphics.Color.parseColor("#1C1C1E") else android.graphics.Color.parseColor("#FFFFFF"))
+        }
+
+        holder.itemView.setOnClickListener {
+            if (isSelectionMode) {
+                toggleSelection(file)
+                onClick(file) // we'll handle selection inside the activity as well to update UI
+            } else {
+                onClick(file)
+            }
+        }
+        
+        holder.itemView.setOnLongClickListener {
+            onLongClick(file)
+            true
+        }
         
         holder.btnDelete.setOnClickListener { onDelete(file) }
         

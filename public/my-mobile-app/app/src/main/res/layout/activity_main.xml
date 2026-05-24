@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#0A0A14">
+    android:background="#F8FAFC">
 
     <FrameLayout
         android:id="@+id/fragment_container"
@@ -20,9 +20,10 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:background="#14141E"
+        android:background="#FFFFFF"
         android:paddingVertical="12dp"
-        android:elevation="16dp"
+        android:elevation="24dp"
+        android:outlineSpotShadowColor="#1A000000"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent">

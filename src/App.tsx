@@ -50,12 +50,12 @@ function MobileMockup() {
   const toggleTheme = () => setTheme(prev => prev === 'dark' ? 'light' : 'dark');
 
   const isDark = theme === 'dark';
-  const bg = isDark ? 'bg-[#111827]' : 'bg-[#F8FAFC]';
-  const cardBg = isDark ? 'bg-[#1F1F2B]' : 'bg-white';
+  const bg = isDark ? 'bg-[#0A0A14]' : 'bg-[#F8FAFC]';
+  const cardBg = isDark ? 'bg-[#1C1C1E]' : 'bg-white';
   const textTitle = isDark ? 'text-white' : 'text-[#111827]';
   const textLabel = isDark ? 'text-white' : 'text-[#111827]';
-  const textValue = isDark ? 'text-[#9CA3AF]' : 'text-[#6B7280]';
-  const divider = isDark ? 'border-[#374151]' : 'border-[#F1F5F9]';
+  const textValue = isDark ? 'text-[#8E8E93]' : 'text-[#6B7280]';
+  const divider = isDark ? 'border-[#2C2C2E]' : 'border-[#F1F5F9]';
 
   return (
     <div className={`w-[375px] h-[812px] ${bg} rounded-[3rem] shadow-2xl overflow-hidden border-8 border-white flex flex-col relative shrink-0 transition-colors duration-300`}>
@@ -159,34 +159,99 @@ function MobileMockup() {
           </div>
         )}
 
-        {(activeTab === 'Videos' || activeTab === 'Record') && (
-          <div className="p-5 flex flex-col items-center justify-center h-full pt-32">
-            <Video size={60} color="#7C3AED" />
-            <h2 className={`text-[20px] font-bold ${textTitle} mt-4`}>No recordings yet</h2>
-            <p className={`text-[14px] ${textValue} text-center mt-2 px-6 leading-relaxed`}>
-              Your recorded videos will appear here. Start recording to capture your screen.
-            </p>
-            <button className="flex items-center bg-[#7C3AED] hover:bg-[#6D28D9] text-white px-5 py-3 rounded-lg mt-6 shadow-[0_4px_14px_rgba(124,58,237,0.3)] transition-colors">
-              <CircleDot size={20} className="mr-2" />
-              <span className="font-bold text-[15px]">Start Recording</span>
-            </button>
+        {activeTab === 'Videos' && (
+          <div className="p-5 h-full flex flex-col">
+            <div className="flex justify-between items-center mt-8 mb-6">
+              <h1 className={`text-[24px] font-bold ${textTitle}`}>Library</h1>
+              <div className="flex gap-4">
+                <Sparkles size={24} color={isDark ? '#8B5CF6' : '#7C3AED'} />
+                <SettingsIcon size={24} color={isDark ? '#8B5CF6' : '#7C3AED'} />
+              </div>
+            </div>
+            <div className="flex-1 flex flex-col items-center justify-center -mt-20">
+              <div className={`w-32 h-32 rounded-full flex items-center justify-center relative mb-6 ${isDark ? 'bg-[#1C1C1E]' : 'bg-gray-100'}`}>
+                <MonitorPlay size={50} color={isDark ? '#8B5CF6' : '#7C3AED'} className="relative z-10" />
+                <Sparkles size={16} color={isDark ? '#6B7280' : '#9CA3AF'} className="absolute top-4 left-4" />
+                <Sparkles size={12} color={isDark ? '#6B7280' : '#9CA3AF'} className="absolute bottom-6 right-6" />
+                <Sparkles size={14} color={isDark ? '#6B7280' : '#9CA3AF'} className="absolute top-10 right-4" />
+              </div>
+              <h2 className={`text-[20px] font-bold ${textTitle}`}>No recordings yet</h2>
+              <p className={`text-[14px] ${textValue} text-center mt-2 px-6 leading-relaxed`}>
+                Your recorded videos will appear here. Start recording to capture your screen.
+              </p>
+              <button className={`flex items-center text-white px-6 py-3.5 rounded-xl mt-8 transition-colors ${isDark ? 'bg-[#8B5CF6] hover:bg-[#7C3AED]' : 'bg-[#7C3AED] hover:bg-[#6D28D9]'}`}>
+                <CircleDot size={20} className="mr-2" />
+                <span className="font-bold text-[15px]">Start Recording</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'Record' && (
+          <div className="p-5 h-full flex flex-col">
+            <h1 className={`text-[28px] font-bold ${textTitle} leading-tight mt-8`}>Screen Recorder</h1>
+            <p className={`text-[14px] ${textValue} mt-1`}>Record your screen in high quality</p>
+
+            <div className="flex-1 flex flex-col items-center justify-center mt-12 mb-8">
+              <button className="w-[140px] h-[140px] rounded-full bg-gradient-to-br from-[#F97316] to-[#EF4444] shadow-[0_10px_30px_rgba(239,68,68,0.3)] flex flex-col justify-center items-center hover:opacity-90 transition-opacity mb-4">
+                <CircleDot size={32} color="#fff" />
+                <span className="text-white font-bold mt-2 tracking-wide text-[18px]">REC</span>
+              </button>
+              <div className={`flex items-center text-[13px] ${textValue}`}>
+                <Sparkles size={16} className="mr-1.5" />
+                <span>Tap the button to start recording</span>
+              </div>
+            </div>
+
+            <div className={`${cardBg} rounded-2xl p-4 flex flex-row items-center justify-around shadow-sm border border-black/5`}>
+              <div className="flex flex-col items-center flex-1">
+                <Crop size={22} color="#8B5CF6" />
+                <span className={`text-[12px] ${textValue} mt-1`}>Resolution</span>
+                <span className={`text-[16px] font-bold ${textTitle} mt-0.5`}>720p</span>
+                <div className={`mt-1 ${isDark ? 'bg-[#8B5CF6]/20' : 'bg-[#E9D5FF]'} px-1.5 py-0.5 rounded`}>
+                  <span className={`text-[10px] font-bold ${isDark ? 'text-[#8B5CF6]' : 'text-[#7C3AED]'}`}>HD</span>
+                </div>
+              </div>
+              
+              <div className={`w-[1px] h-12 ${divider}`} />
+              
+              <div className="flex flex-col items-center flex-1">
+                <Gauge size={22} color="#3B82F6" />
+                <span className={`text-[12px] ${textValue} mt-1`}>FPS</span>
+                <span className={`text-[16px] font-bold ${textTitle} mt-0.5`}>30</span>
+                <div className={`mt-1 ${isDark ? 'bg-[#3B82F6]/20' : 'bg-[#DBEAFE]'} px-1.5 py-0.5 rounded`}>
+                  <span className={`text-[10px] font-bold ${isDark ? 'text-[#3B82F6]' : 'text-[#2563EB]'}`}>FPS</span>
+                </div>
+              </div>
+
+              <div className={`w-[1px] h-12 ${divider}`} />
+
+              <div className="flex flex-col items-center flex-1">
+                <BarChart3 size={22} color="#F97316" />
+                <span className={`text-[12px] ${textValue} mt-1`}>Bitrate</span>
+                <span className={`text-[16px] font-bold ${textTitle} mt-0.5`}>8 Mbps</span>
+                <div className={`mt-1 ${isDark ? 'bg-[#F97316]/20' : 'bg-[#FEF3C7]'} px-1.5 py-0.5 rounded`}>
+                  <span className={`text-[10px] font-bold ${isDark ? 'text-[#F97316]' : 'text-[#F59E0B]'}`}>MED</span>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
 
       {/* Bottom Nav */}
-      <div className={`absolute bottom-0 w-full ${isDark ? 'bg-[#111827] border-[#1F1F2B]' : 'bg-white border-gray-50'} border-t pt-3 pb-8 flex flex-row justify-around z-10 transition-colors duration-300`}>
+      <div className={`absolute bottom-0 w-full ${isDark ? 'bg-[#0A0A14] border-[#1C1C1E]' : 'bg-white border-gray-50'} border-t pt-3 pb-8 flex flex-row justify-around z-10 transition-colors duration-300`}>
         <button onClick={() => setActiveTab('Record')} className="flex flex-col items-center group w-20">
-          <CircleDot size={24} color={activeTab === 'Record' ? '#7C3AED' : (isDark ? '#9CA3AF' : '#6B7280')} className="mb-1 transition-colors" />
-          <span className={`text-[11px] transition-colors ${activeTab === 'Record' ? 'text-[#7C3AED] font-medium' : isDark ? 'text-[#9CA3AF]' : 'text-[#6B7280]'}`}>Record</span>
+          <CircleDot size={24} color={activeTab === 'Record' ? '#8B5CF6' : (isDark ? '#8E8E93' : '#6B7280')} className="mb-1 transition-colors" />
+          <span className={`text-[11px] transition-colors ${activeTab === 'Record' ? 'text-[#8B5CF6] font-medium' : isDark ? 'text-[#8E8E93]' : 'text-[#6B7280]'}`}>Record</span>
         </button>
         <button onClick={() => setActiveTab('Videos')} className="flex flex-col items-center group w-20">
-          <MonitorPlay size={24} color={activeTab === 'Videos' ? '#7C3AED' : (isDark ? '#9CA3AF' : '#6B7280')} className="mb-1 transition-colors" />
-          <span className={`text-[11px] transition-colors ${activeTab === 'Videos' ? 'text-[#7C3AED] font-medium' : isDark ? 'text-[#9CA3AF]' : 'text-[#6B7280]'}`}>Videos</span>
+          <MonitorPlay size={24} color={activeTab === 'Videos' ? '#8B5CF6' : (isDark ? '#8E8E93' : '#6B7280')} className="mb-1 transition-colors" />
+          <span className={`text-[11px] transition-colors ${activeTab === 'Videos' ? 'text-[#8B5CF6] font-medium' : isDark ? 'text-[#8E8E93]' : 'text-[#6B7280]'}`}>Videos</span>
         </button>
         <button onClick={() => setActiveTab('Settings')} className="flex flex-col items-center group w-20">
-          <SettingsIcon size={24} color={activeTab === 'Settings' ? '#7C3AED' : (isDark ? '#9CA3AF' : '#6B7280')} className="mb-1 transition-colors" />
-          <span className={`text-[11px] transition-colors ${activeTab === 'Settings' ? 'text-[#7C3AED] font-medium' : isDark ? 'text-[#9CA3AF]' : 'text-[#6B7280]'}`}>Settings</span>
+          <SettingsIcon size={24} color={activeTab === 'Settings' ? '#8B5CF6' : (isDark ? '#8E8E93' : '#6B7280')} className="mb-1 transition-colors" />
+          <span className={`text-[11px] transition-colors ${activeTab === 'Settings' ? 'text-[#8B5CF6] font-medium' : isDark ? 'text-[#8E8E93]' : 'text-[#6B7280]'}`}>Settings</span>
         </button>
       </div>
     </div>

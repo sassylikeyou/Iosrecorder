@@ -20,6 +20,15 @@
         android:background="#208B5CF6"
         android:layout_marginEnd="16dp" />
 
+    <ImageView
+        android:id="@+id/img_check"
+        android:layout_width="24dp"
+        android:layout_height="24dp"
+        android:src="@android:drawable/checkbox_on_background"
+        android:visibility="gone"
+        app:tint="#8B5CF6"
+        android:layout_marginEnd="16dp" />
+
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
