@@ -1,0 +1,1107 @@
+1:package com.example.screenrecorder
+2:
+3:import android.app.Activity
+4:import android.content.Intent
+5:import android.media.projection.MediaProjectionManager
+6:import android.net.Uri
+7:import android.os.Bundle
+8:import android.view.LayoutInflater
+9:import android.view.View
+10:import android.widget.FrameLayout
+11:import android.widget.LinearLayout
+12:import android.widget.TextView
+13:import android.widget.ImageView
+14:import android.widget.Switch
+15:import androidx.activity.result.contract.ActivityResultContracts
+16:import androidx.appcompat.app.AppCompatActivity
+17:import android.Manifest
+18:import android.content.pm.PackageManager
+19:import androidx.core.app.ActivityCompat
+20:import androidx.core.content.ContextCompat
+21:import android.os.Build
+22:import androidx.appcompat.app.AlertDialog
+23:import android.graphics.Color
+24:import android.graphics.drawable.GradientDrawable
+25:import android.animation.ObjectAnimator
+26:import android.animation.PropertyValuesHolder
+27:import android.animation.ValueAnimator
+28:
+29:class MainActivity : AppCompatActivity() {
+30:
+31:    private lateinit var settingsRepository: SettingsRepository
+32:    private lateinit var projectionManager: MediaProjectionManager
+33:
+34:    private val PERMISSION_REQ_CODE = 1001
+35:
+36:    private lateinit var container: FrameLayout
+37:    private lateinit var tabRecord: LinearLayout
+38:    private lateinit var tabLibrary: LinearLayout
+39:    private lateinit var tabSettings: LinearLayout
+40:
+41:    private lateinit var viewRecord: View
+42:    private lateinit var viewLibrary: View
+43:    private lateinit var viewSettings: View
+44:
+45:    private var currentTabIndex = -1
+46:    private var pulseAnimator: ObjectAnimator? = null
+47:    private var btnAnimator: ObjectAnimator? = null
+48:    private var bgAnimator: ValueAnimator? = null
+49:    private var rippleAnimator: ObjectAnimator? = null
+50:
+51:    private val handler = android.os.Handler(android.os.Looper.getMainLooper())
+52:    private var isCountingDown = false
+53:    private val liveTimerRunnable = object : Runnable {
+54:        override fun run() {
+55:            if (RecordingManager.isRecording) {
+56:                val duration = System.currentTimeMillis() - RecordingManager.recordingStartTime
+57:                val seconds = (duration / 1000).toInt() % 60
+58:                val minutes = ((duration / (1000 * 60)) % 60).toInt()
+59:                val hours = (duration / (1000 * 60 * 60)).toInt()
+60:                val timeString = if (hours > 0) {
+61:                    String.format(java.util.Locale.US, "%02d:%02d:%02d", hours, minutes, seconds)
+62:                } else {
+63:                    String.format(java.util.Locale.US, "%02d:%02d", minutes, seconds)
+64:                }
+65:                viewRecord.findViewById<TextView>(R.id.txt_status)?.text = "Recording in progress... $timeString"
+66:                handler.postDelayed(this, 1000)
+67:            }
+68:        }
+69:    }
+70:
+71:    private val captureIntentLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+72:        if (result.resultCode == Activity.RESULT_OK && result.data != null) {
+73:            val serviceIntent = Intent(this, RecordingService::class.java).apply {
+74:                action = RecordingService.ACTION_START
+75:                putExtra(RecordingService.EXTRA_RESULT_CODE, result.resultCode)
+76:                putExtra(RecordingService.EXTRA_RESULT_DATA, result.data)
+77:            }
+78:            startForegroundService(serviceIntent)
+79:            moveTaskToBack(true) // Minimize app like iOS
+80:        }
+81:    }
+82:
+83:    override fun onSaveInstanceState(outState: Bundle) {
+84:        super.onSaveInstanceState(outState)
+85:        outState.putInt("currentTabIndex", currentTabIndex)
+86:    }
+87:
+88:    override fun onCreate(savedInstanceState: Bundle?) {
+89:        super.onCreate(savedInstanceState)
+90:        settingsRepository = SettingsRepository(this)
+91:        
+92:        val mode = when (settingsRepository.themeMode) {
+93:            1 -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO
+94:            2 -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES
+95:            else -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+96:        }
+97:        androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(mode)
+98:        
+99:        setContentView(R.layout.activity_main)
+100:
+101:        projectionManager = getSystemService(MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+102:
+103:        container = findViewById(R.id.fragment_container)
+104:        tabRecord = findViewById(R.id.tab_record)
+105:        tabLibrary = findViewById(R.id.tab_library)
+106:        tabSettings = findViewById(R.id.tab_settings)
+107:
+108:        viewRecord = layoutInflater.inflate(R.layout.fragment_record, container, false)
+109:        viewLibrary = layoutInflater.inflate(R.layout.fragment_library, container, false)
+110:        viewSettings = layoutInflater.inflate(R.layout.fragment_settings, container, false)
+111:
+112:        container.addView(viewRecord)
+113:        container.addView(viewLibrary)
+114:        container.addView(viewSettings)
+115:
+116:        tabRecord.setOnClickListener { switchTab(0) }
+117:        tabLibrary.setOnClickListener { switchTab(1) }
+118:        tabSettings.setOnClickListener { switchTab(2) }
+119:
+120:        setupRecordView()
+121:        setupSettingsView()
+122:        setupLibraryView()
+123:
+124:        startBackgroundAnimation()
+125:
+126:        val initialTab = savedInstanceState?.getInt("currentTabIndex", 0) ?: 0
+127:        switchTab(initialTab)
+128:    }
+129:
+130:    private fun switchTab(index: Int) {
+131:        if (currentTabIndex == index) return
+132:        val isForward = index > currentTabIndex
+133:        val previousIndex = currentTabIndex
+134:        currentTabIndex = index
+135:        
+136:        val targetView = when (index) {
+137:            0 -> viewRecord
+138:            1 -> viewLibrary
+139:            else -> viewSettings
+140:        }
+141:
+142:        listOf(viewRecord, viewLibrary, viewSettings).forEach { view ->
+143:            if (view == targetView) {
+144:                if (view.visibility != View.VISIBLE) {
+145:                    view.visibility = View.VISIBLE
+146:                    view.alpha = 0f
+147:                    view.translationX = if (isForward) 150f else -150f
+148:                    view.animate()
+149:                        .alpha(1f)
+150:                        .translationX(0f)
+151:                        .setDuration(300)
+152:                        .setInterpolator(android.view.animation.DecelerateInterpolator())
+153:                        .start()
+154:                }
+155:            } else {
+156:                if (view.visibility == View.VISIBLE) {
+157:                    view.animate()
+158:                        .alpha(0f)
+159:                        .translationX(if (isForward) -150f else 150f)
+160:                        .setDuration(300)
+161:                        .setInterpolator(android.view.animation.AccelerateInterpolator())
+162:                        .withEndAction { view.visibility = View.GONE }
+163:                        .start()
+164:                }
+165:            }
+166:        }
+167:
+168:        val isNightMode = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+169:        val navBar = findViewById<LinearLayout>(R.id.bottom_nav)
+170:        // Set an elevation depending on theme
+171:        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+172:            navBar.elevation = if (isNightMode) 0f else 24f
+173:            val divider = findViewById<View>(android.R.id.custom) // using custom ID because R.id isn't dynamically registered without xml.
+174:            if (divider == null) {
+175:                val newDivider = View(this).apply {
+176:                    id = android.R.id.custom
+177:                    layoutParams = android.view.ViewGroup.MarginLayoutParams(android.view.ViewGroup.LayoutParams.MATCH_PARENT, 1).apply {
+178:                        val lp = navBar.layoutParams as? androidx.constraintlayout.widget.ConstraintLayout.LayoutParams
+179:                        if (lp != null) {
+180:                            // Can't reliably insert constraint layout divider linearly inside constraint layout without matching constraints
+181:                        }
+182:                    }
+183:                    setBackgroundColor(if (isNightMode) Color.parseColor("#1C1C1E") else Color.parseColor("#F3F4F6"))
+184:                }
+185:                // Skip injecting programmatically if constraint layout is too complex, let's just make the navBar have a top border by itself.
+186:                navBar.setBackgroundColor(if (isNightMode) Color.parseColor("#0A0A14") else Color.parseColor("#FFFFFF"))
+187:            }
+188:        }
+189:        
+190:        val colorActive = Color.parseColor("#8B5CF6")
+191:        val colorInactive = if (isNightMode) Color.parseColor("#8E8E93") else Color.parseColor("#6B7280")
+192:        
+193:        if (isNightMode) {
+194:            navBar.setBackgroundColor(Color.parseColor("#0A0A14"))
+195:            container.setBackgroundColor(Color.parseColor("#0A0A14"))
+196:        } else {
+197:            navBar.setBackgroundColor(Color.parseColor("#FFFFFF"))
+198:            container.setBackgroundColor(Color.parseColor("#F8FAFC"))
+199:        }
+200:
+201:        val ivRecord = findViewById<ImageView>(R.id.icon_record)
+202:        val ivLibrary = findViewById<ImageView>(R.id.icon_library)
+203:        val ivSettings = findViewById<ImageView>(R.id.icon_settings)
+204:
+205:        if (previousIndex != -1) {
+206:            animateTabIcon(ivRecord, index == 0)
+207:            animateTabIcon(ivLibrary, index == 1)
+208:            animateTabIcon(ivSettings, index == 2)
+209:        } else {
+210:            ivRecord.scaleX = if (index == 0) 1.2f else 1.0f
+211:            ivRecord.scaleY = if (index == 0) 1.2f else 1.0f
+212:            ivLibrary.scaleX = if (index == 1) 1.2f else 1.0f
+213:            ivLibrary.scaleY = if (index == 1) 1.2f else 1.0f
+214:            ivSettings.scaleX = if (index == 2) 1.2f else 1.0f
+215:            ivSettings.scaleY = if (index == 2) 1.2f else 1.0f
+216:        }
+217:
+218:        ivRecord.setColorFilter(if (index == 0) colorActive else colorInactive)
+219:        findViewById<TextView>(R.id.text_record).setTextColor(if (index == 0) colorActive else colorInactive)
+220:        findViewById<TextView>(R.id.text_record).typeface = if (index == 0) android.graphics.Typeface.DEFAULT_BOLD else android.graphics.Typeface.DEFAULT
+221:
+222:        ivLibrary.setColorFilter(if (index == 1) colorActive else colorInactive)
+223:        findViewById<TextView>(R.id.text_library).setTextColor(if (index == 1) colorActive else colorInactive)
+224:        findViewById<TextView>(R.id.text_library).typeface = if (index == 1) android.graphics.Typeface.DEFAULT_BOLD else android.graphics.Typeface.DEFAULT
+225:
+226:        ivSettings.setColorFilter(if (index == 2) colorActive else colorInactive)
+227:        findViewById<TextView>(R.id.text_settings).setTextColor(if (index == 2) colorActive else colorInactive)
+228:        findViewById<TextView>(R.id.text_settings).typeface = if (index == 2) android.graphics.Typeface.DEFAULT_BOLD else android.graphics.Typeface.DEFAULT
+229:
+230:        if (index == 0) updateRecordUI()
+231:        if (index == 1) loadLibrary()
+232:        if (index == 2) updateSettingsUI()
+233:    }
+234:
+235:    private fun animateTabIcon(icon: ImageView, isSelected: Boolean) {
+236:        val targetScale = if (isSelected) 1.2f else 1.0f
+237:        icon.animate()
+238:            .scaleX(targetScale)
+239:            .scaleY(targetScale)
+240:            .setDuration(300)
+241:            .setInterpolator(android.view.animation.OvershootInterpolator())
+242:            .start()
+243:    }
+244:
+245:    private fun startBackgroundAnimation() {
+246:        if (bgAnimator == null) {
+247:            val color1 = Color.parseColor("#CC150030") // Purpleish dark
+248:            val color2 = Color.parseColor("#E6000000") // Blackish
+249:            
+250:            val gradient = GradientDrawable(
+251:                GradientDrawable.Orientation.TL_BR,
+252:                intArrayOf(color1, color2)
+253:            )
+254:            gradient.shape = GradientDrawable.RECTANGLE
+255:            container.background = gradient
+256:
+257:            bgAnimator = ValueAnimator.ofFloat(0f, 1f, 0f).apply {
+258:                duration = 10000
+259:                repeatCount = ValueAnimator.INFINITE
+260:                addUpdateListener { animator ->
+261:                    val fraction = animator.animatedValue as Float
+262:                    // Interpolate orientation or simply colors (hack: adjust center)
+263:                    gradient.setGradientCenter(0.5f + fraction * 0.5f, 0.5f + fraction * 0.5f)
+264:                }
+265:            }
+266:        }
+267:        bgAnimator?.start()
+268:    }
+269:
+270:    private fun setupRecordView() {
+271:        viewRecord.findViewById<FrameLayout>(R.id.btn_record).setOnClickListener {
+272:            checkPermissionsAndStart()
+273:        }
+274:        val btnMic = viewRecord.findViewById<LinearLayout>(R.id.btn_mic)
+275:        btnMic.setOnClickListener {
+276:            settingsRepository.audioSourceMode = if (settingsRepository.audioSourceMode == 0) 1 else 0
+277:            updateRecordUI()
+278:        }
+279:        
+280:        startRippleAnimation()
+281:    }
+282:
+283:    private fun startRippleAnimation() {
+284:        val ripple = viewRecord.findViewById<View>(R.id.rec_ripple)
+285:        if (rippleAnimator == null) {
+286:            val scaleX = PropertyValuesHolder.ofFloat(View.SCALE_X, 0.8f, 1.5f)
+287:            val scaleY = PropertyValuesHolder.ofFloat(View.SCALE_Y, 0.8f, 1.5f)
+288:            val alpha = PropertyValuesHolder.ofFloat(View.ALPHA, 0.6f, 0f)
+289:            rippleAnimator = ObjectAnimator.ofPropertyValuesHolder(ripple, scaleX, scaleY, alpha).apply {
+290:                duration = 1200
+291:                repeatCount = ObjectAnimator.INFINITE
+292:                repeatMode = ObjectAnimator.RESTART
+293:                interpolator = android.view.animation.DecelerateInterpolator()
+294:            }
+295:        }
+296:        rippleAnimator?.start()
+297:    }
+298:
+299:    private fun setupSettingsView() {
+300:        viewSettings.findViewById<View>(R.id.row_theme)?.setOnClickListener {
+301:            val options = arrayOf("System Default", "Light Theme", "Dark Theme")
+302:            val values = intArrayOf(-1, 1, 2)
+303:            val currentIndex = values.indexOf(settingsRepository.themeMode).takeIf { it >= 0 } ?: 0
+304:            AlertDialog.Builder(this).setSingleChoiceItems(options, currentIndex) { dialog, which ->
+305:                settingsRepository.themeMode = values[which]
+306:                val mode = when (values[which]) {
+307:                    1 -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO
+308:                    2 -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES
+309:                    else -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+310:                }
+311:                androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(mode)
+312:                updateSettingsUI()
+313:                dialog.dismiss()
+314:                recreate()
+315:            }.show()
+316:        }
+317:
+318:        viewSettings.findViewById<View>(R.id.row_resolution).setOnClickListener {
+319:            val options = arrayOf("720p HD", "1080p HD", "1440p HD")
+320:            val values = intArrayOf(720, 1080, 1440)
+321:            val currentIndex = values.indexOf(settingsRepository.resolutionHeight).takeIf { it >= 0 } ?: 1
+322:            AlertDialog.Builder(this).setSingleChoiceItems(options, currentIndex) { dialog, which ->
+323:                settingsRepository.resolutionHeight = values[which]
+324:                updateSettingsUI()
+325:                dialog.dismiss()
+326:            }.show()
+327:        }
+328:        viewSettings.findViewById<View>(R.id.row_fps).setOnClickListener {
+329:            val options = arrayOf("30 FPS", "60 FPS", "90 FPS", "120 FPS")
+330:            val values = intArrayOf(30, 60, 90, 120)
+331:            val currentIndex = values.indexOf(settingsRepository.frameRate).takeIf { it >= 0 } ?: 1
+332:            AlertDialog.Builder(this).setSingleChoiceItems(options, currentIndex) { dialog, which ->
+333:                settingsRepository.frameRate = values[which]
+334:                updateSettingsUI()
+335:                dialog.dismiss()
+336:            }.show()
+337:        }
+338:        viewSettings.findViewById<View>(R.id.row_countdown)?.setOnClickListener {
+339:            val options = arrayOf("0s (Off)", "3s", "5s")
+340:            val values = intArrayOf(0, 3, 5)
+341:            val currentIndex = values.indexOf(settingsRepository.countdownDuration).takeIf { it >= 0 } ?: 1
+342:            AlertDialog.Builder(this).setSingleChoiceItems(options, currentIndex) { dialog, which ->
+343:                settingsRepository.countdownDuration = values[which]
+344:                updateSettingsUI()
+345:                dialog.dismiss()
+346:            }.show()
+347:        }
+348:        viewSettings.findViewById<View>(R.id.row_bitrate).setOnClickListener {
+349:            val options = arrayOf("5 Mbps", "8 Mbps", "12 Mbps", "16 Mbps")
+350:            val values = intArrayOf(5000000, 8000000, 12000000, 16000000)
+351:            val currentIndex = values.indexOf(settingsRepository.videoBitrate).takeIf { it >= 0 } ?: 2
+352:            AlertDialog.Builder(this).setSingleChoiceItems(options, currentIndex) { dialog, which ->
+353:                settingsRepository.videoBitrate = values[which]
+354:                updateSettingsUI()
+355:                dialog.dismiss()
+356:            }.show()
+357:        }
+358:
+359:        viewSettings.findViewById<View>(R.id.row_encoder)?.setOnClickListener {
+360:            val options = arrayOf("H.264 / AVC", "H.265 / HEVC")
+361:            val currentIndex = if (settingsRepository.videoEncoder == "H265") 1 else 0
+362:            AlertDialog.Builder(this).setSingleChoiceItems(options, currentIndex) { dialog, which ->
+363:                settingsRepository.videoEncoder = if (which == 1) "H265" else "H264"
+364:                updateSettingsUI()
+365:                dialog.dismiss()
+366:            }.show()
+367:        }
+368:
+369:        viewSettings.findViewById<View>(R.id.row_max_file_size)?.setOnClickListener {
+370:            val options = arrayOf("No Limit", "1 GB", "2 GB", "4 GB", "Custom Size")
+371:            // default indices
+372:            val limit = settingsRepository.maxFileSize
+373:            val currentIndex = when (limit) {
+374:                0L -> 0
+375:                1024L * 1024L * 1024L -> 1
+376:                2048L * 1024L * 1024L -> 2
+377:                4096L * 1024L * 1024L -> 3
+378:                else -> 4
+379:            }
+380:            AlertDialog.Builder(this).setSingleChoiceItems(options, currentIndex) { dialog, which ->
+381:                when (which) {
+382:                    0 -> settingsRepository.maxFileSize = 0L
+383:                    1 -> settingsRepository.maxFileSize = 1024L * 1024L * 1024L
+384:                    2 -> settingsRepository.maxFileSize = 2048L * 1024L * 1024L
+385:                    3 -> settingsRepository.maxFileSize = 4096L * 1024L * 1024L
+386:                    4 -> {
+387:                        val container = android.widget.LinearLayout(this).apply {
+388:                            orientation = android.widget.LinearLayout.HORIZONTAL
+389:                            setPadding(50, 20, 50, 0)
+390:                        }
+391:                        val editText = android.widget.EditText(this).apply {
+392:                            inputType = android.text.InputType.TYPE_CLASS_NUMBER
+393:                            hint = "Size value"
+394:                            layoutParams = android.widget.LinearLayout.LayoutParams(0, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
+395:                        }
+396:                        val spinner = android.widget.Spinner(this).apply {
+397:                            val adapter = android.widget.ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, arrayOf("MB", "GB"))
+398:                            this.adapter = adapter
+399:                            layoutParams = android.widget.LinearLayout.LayoutParams(android.widget.LinearLayout.LayoutParams.WRAP_CONTENT, android.widget.LinearLayout.LayoutParams.WRAP_CONTENT)
+400:                        }
+401:                        container.addView(editText)
+402:                        container.addView(spinner)
+403:                        
+404:                        AlertDialog.Builder(this)
+405:                            .setTitle("Custom File Size Limit")
+406:                            .setView(container)
+407:                            .setPositiveButton("Set") { _, _ ->
+408:                                val num = editText.text.toString().toLongOrNull()
+409:                                if (num != null && num > 0) {
+410:                                    val isGb = spinner.selectedItem.toString() == "GB"
+411:                                    val multiplier = if (isGb) 1024L * 1024L * 1024L else 1024L * 1024L
+412:                                    settingsRepository.maxFileSize = num * multiplier
+413:                                    updateSettingsUI()
+414:                                }
+415:                            }
+416:                            .setNegativeButton("Cancel", null)
+417:                            .show()
+418:                        dialog.dismiss()
+419:                        return@setSingleChoiceItems
+420:                    }
+421:                }
+422:                updateSettingsUI()
+423:                dialog.dismiss()
+424:            }.show()
+425:        }
+426:        viewSettings.findViewById<View>(R.id.row_format).setOnClickListener {
+427:            val options = arrayOf("MP4", "MKV")
+428:            val currentIndex = if (settingsRepository.outputFormat == "MP4") 0 else 1
+429:            AlertDialog.Builder(this).setSingleChoiceItems(options, currentIndex) { dialog, which ->
+430:                settingsRepository.outputFormat = options[which]
+431:                updateSettingsUI()
+432:                dialog.dismiss()
+433:            }.show()
+434:        }
+435:
+436:        viewSettings.findViewById<View>(R.id.row_export_code)?.setOnClickListener {
+437:            AlertDialog.Builder(this)
+438:                .setTitle("Export Codebase")
+439:                .setMessage("To export the codebase as a ZIP file or to GitHub, please use the platform Settings menu (gear icon) located outside of the app preview.")
+440:                .setPositiveButton("OK", null)
+441:                .show()
+442:        }
+443:
+444:        viewSettings.findViewById<View>(R.id.row_reset_defaults)?.setOnClickListener {
+445:            AlertDialog.Builder(this)
+446:                .setTitle("Reset to Defaults")
+447:                .setMessage("Are you sure you want to revert all settings to their default values?")
+448:                .setPositiveButton("Reset") { dialog, _ ->
+449:                    settingsRepository.resetToDefaults()
+450:                    val mode = when (settingsRepository.themeMode) {
+451:                        1 -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_NO
+452:                        2 -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_YES
+453:                        else -> androidx.appcompat.app.AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+454:                    }
+455:                    androidx.appcompat.app.AppCompatDelegate.setDefaultNightMode(mode)
+456:                    updateSettingsUI()
+457:                    dialog.dismiss()
+458:                    android.widget.Toast.makeText(this, "Settings reset to defaults", android.widget.Toast.LENGTH_SHORT).show()
+459:                }
+460:                .setNegativeButton("Cancel", null)
+461:                .show()
+462:        }
+463:
+464:        val switchMic = viewSettings.findViewById<Switch>(R.id.switch_mic)
+465:        switchMic.setOnCheckedChangeListener { _, isChecked ->
+466:            if (isChecked) {
+467:                settingsRepository.audioSourceMode = if (viewSettings.findViewById<Switch>(R.id.switch_sys_audio).isChecked) 3 else 1
+468:            } else {
+469:                settingsRepository.audioSourceMode = if (viewSettings.findViewById<Switch>(R.id.switch_sys_audio).isChecked) 2 else 0
+470:            }
+471:            updateSettingsUI()
+472:        }
+473:        
+474:        val switchShowTouches = viewSettings.findViewById<Switch>(R.id.switch_show_touches)
+475:        switchShowTouches?.setOnCheckedChangeListener { _, isChecked ->
+476:            if (isChecked && !android.provider.Settings.System.canWrite(this)) {
+477:                switchShowTouches.isChecked = false
+478:                val intent = Intent(android.provider.Settings.ACTION_MANAGE_WRITE_SETTINGS)
+479:                intent.data = Uri.parse("package:$packageName")
+480:                startActivity(intent)
+481:                android.widget.Toast.makeText(this, "Please grant permission to modify system settings", android.widget.Toast.LENGTH_LONG).show()
+482:                return@setOnCheckedChangeListener
+483:            }
+484:            settingsRepository.showTouches = isChecked
+485:            updateSettingsUI()
+486:        }
+487:    }
+488:
+489:    private fun setupLibraryView() {
+490:        val recyclerView = viewLibrary.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.recycler_view)
+491:        recyclerView.layoutManager = androidx.recyclerview.widget.LinearLayoutManager(this)
+492:    }
+493:
+494:    private fun loadLibrary() {
+495:        val txtEmpty = viewLibrary.findViewById<TextView>(R.id.txt_empty)
+496:        val resolver = contentResolver
+497:        val collection = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+498:            android.provider.MediaStore.Video.Media.getContentUri(android.provider.MediaStore.VOLUME_EXTERNAL_PRIMARY)
+499:        } else {
+500:            android.provider.MediaStore.Video.Media.EXTERNAL_CONTENT_URI
+501:        }
+502:        val projection = arrayOf(
+503:            android.provider.MediaStore.Video.Media._ID,
+504:            android.provider.MediaStore.Video.Media.DISPLAY_NAME,
+505:            android.provider.MediaStore.Video.Media.DURATION,
+506:            android.provider.MediaStore.Video.Media.SIZE
+507:        )
+508:        val query = resolver.query(
+509:            collection,
+510:            projection,
+511:            android.provider.MediaStore.Video.Media.DATA + " like ? ",
+512:            arrayOf("%ScreenRecorder%"),
+513:            android.provider.MediaStore.Video.Media.DATE_ADDED + " DESC"
+514:        )
+515:        val files = mutableListOf<VideoFile>()
+516:        val retriever = android.media.MediaMetadataRetriever()
+517:        query?.use { cursor ->
+518:            val idColumn = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Video.Media._ID)
+519:            val nameColumn = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Video.Media.DISPLAY_NAME)
+520:            val sizeColumn = cursor.getColumnIndexOrThrow(android.provider.MediaStore.Video.Media.SIZE)
+521:            while (cursor.moveToNext()) {
+522:                val id = cursor.getLong(idColumn)
+523:                val name = cursor.getString(nameColumn)
+524:                val size = cursor.getLong(sizeColumn)
+525:                val contentUri: Uri = android.content.ContentUris.withAppendedId(android.provider.MediaStore.Video.Media.EXTERNAL_CONTENT_URI, id)
+526:                
+527:                var thumbnail: android.graphics.Bitmap? = null
+528:                try {
+529:                    retriever.setDataSource(this, contentUri)
+530:                    thumbnail = retriever.getFrameAtTime(1000000) // 1 second in microseconds
+531:                    thumbnail?.let {
+532:                        val scaled = android.graphics.Bitmap.createScaledBitmap(it, 120, 120, true)
+533:                        if (scaled != it) {
+534:                            it.recycle()
+535:                        }
+536:                        thumbnail = scaled
+537:                    }
+538:                } catch (e: Exception) {
+539:                    e.printStackTrace()
+540:                }
+541:
+542:                files.add(VideoFile(contentUri, name, size, thumbnail))
+543:            }
+544:        }
+545:        try { retriever.release() } catch (e: Exception) {}
+546:        if (files.isEmpty()) {
+547:            txtEmpty.visibility = View.VISIBLE
+548:        } else {
+549:            txtEmpty.visibility = View.GONE
+550:        }
+551:        val recyclerView = viewLibrary.findViewById<androidx.recyclerview.widget.RecyclerView>(R.id.recycler_view)
+552:        
+553:        fun updateSelectionUI(adapter: LibraryAdapter) {
+554:            val selectionToolbar = viewLibrary.findViewById<LinearLayout>(R.id.selection_toolbar)
+555:            val txtSelectionCount = viewLibrary.findViewById<TextView>(R.id.txt_selection_count)
+556:            val txtTitle = viewLibrary.findViewById<TextView>(R.id.txt_title)
+557:            
+558:            if (adapter.isSelectionMode) {
+559:                selectionToolbar.visibility = View.VISIBLE
+560:                txtTitle.visibility = View.INVISIBLE
+561:                txtSelectionCount.text = "${adapter.selectedFiles.size} selected"
+562:            } else {
+563:                selectionToolbar.visibility = View.GONE
+564:                txtTitle.visibility = View.VISIBLE
+565:            }
+566:            
+567:            val isNightMode = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+568:            if (isNightMode) {
+569:                selectionToolbar.setBackgroundColor(Color.parseColor("#1C1C1E"))
+570:                txtSelectionCount.setTextColor(Color.WHITE)
+571:            } else {
+572:                selectionToolbar.setBackgroundColor(Color.parseColor("#F2F2F7"))
+573:                txtSelectionCount.setTextColor(Color.BLACK)
+574:            }
+575:        }
+576:        
+577:        val adapter = LibraryAdapter(
+578:            files,
+579:            onClick = { file ->
+580:                val currentAdapter = recyclerView.adapter as LibraryAdapter
+581:                if (currentAdapter.isSelectionMode) {
+582:                    updateSelectionUI(currentAdapter)
+583:                } else {
+584:                    val intent = Intent(Intent.ACTION_VIEW, file.uri)
+585:                    intent.setDataAndType(file.uri, "video/*")
+586:                    intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+587:                    startActivity(intent)
+588:                }
+589:            },
+590:            onLongClick = { file ->
+591:                val currentAdapter = recyclerView.adapter as LibraryAdapter
+592:                if (!currentAdapter.isSelectionMode) {
+593:                    currentAdapter.toggleSelection(file)
+594:                    updateSelectionUI(currentAdapter)
+595:                }
+596:            },
+597:            onDelete = { file ->
+598:                deleteVideo(file)
+599:            },
+600:            onRename = { file ->
+601:                renameVideo(file)
+602:            },
+603:            onShare = { file ->
+604:                shareVideo(file)
+605:            }
+606:        )
+607:        recyclerView.adapter = adapter
+608:        
+609:        val controller = android.view.animation.AnimationUtils.loadLayoutAnimation(this, R.anim.layout_animation_fall_down)
+610:        recyclerView.layoutAnimation = controller
+611:        recyclerView.scheduleLayoutAnimation()
+612:        
+613:        viewLibrary.findViewById<View>(R.id.btn_cancel_selection).setOnClickListener {
+614:            adapter.clearSelection()
+615:            updateSelectionUI(adapter)
+616:        }
+617:        
+618:        viewLibrary.findViewById<View>(R.id.btn_delete_selected).setOnClickListener {
+619:            if (adapter.selectedFiles.isNotEmpty()) {
+620:                val selectedFilesList = adapter.selectedFiles.toList()
+621:                val alert = android.app.AlertDialog.Builder(this)
+622:                alert.setTitle("Delete Videos")
+623:                alert.setMessage("Are you sure you want to delete ${selectedFilesList.size} selected video(s)?")
+624:                alert.setPositiveButton("Delete") { _, _ ->
+625:                    selectedFilesList.forEach { file ->
+626:                        try {
+627:                            contentResolver.delete(file.uri, null, null)
+628:                        } catch (e: Exception) {
+629:                            e.printStackTrace()
+630:                        }
+631:                    }
+632:                    adapter.clearSelection()
+633:                    updateSelectionUI(adapter)
+634:                    loadLibrary()
+635:                }
+636:                alert.setNegativeButton("Cancel", null)
+637:                alert.show()
+638:            }
+639:        }
+640:    }
+641:
+642:    private fun startPulseAnimation() {
+643:        val halo = viewRecord.findViewById<View>(R.id.rec_halo)
+644:        val btn = viewRecord.findViewById<View>(R.id.btn_record)
+645:        
+646:        if (pulseAnimator == null) {
+647:            val scaleX = PropertyValuesHolder.ofFloat(View.SCALE_X, 1f, 1.5f)
+648:            val scaleY = PropertyValuesHolder.ofFloat(View.SCALE_Y, 1f, 1.5f)
+649:            val alpha = PropertyValuesHolder.ofFloat(View.ALPHA, 0.8f, 0f)
+650:            pulseAnimator = ObjectAnimator.ofPropertyValuesHolder(halo, scaleX, scaleY, alpha).apply {
+651:                duration = 2000
+652:                repeatCount = ObjectAnimator.INFINITE
+653:                repeatMode = ObjectAnimator.RESTART
+654:            }
+655:        }
+656:        
+657:        if (btnAnimator == null) {
+658:            val btnScaleX = PropertyValuesHolder.ofFloat(View.SCALE_X, 1f, 1.05f)
+659:            val btnScaleY = PropertyValuesHolder.ofFloat(View.SCALE_Y, 1f, 1.05f)
+660:            btnAnimator = ObjectAnimator.ofPropertyValuesHolder(btn, btnScaleX, btnScaleY).apply {
+661:                duration = 1000
+662:                repeatCount = ObjectAnimator.INFINITE
+663:                repeatMode = ObjectAnimator.REVERSE
+664:                interpolator = android.view.animation.AccelerateDecelerateInterpolator()
+665:            }
+666:        }
+667:        
+668:        pulseAnimator?.start()
+669:        btnAnimator?.start()
+670:    }
+671:
+672:    private fun stopPulseAnimation() {
+673:        pulseAnimator?.cancel()
+674:        btnAnimator?.cancel()
+675:        val halo = viewRecord.findViewById<View>(R.id.rec_halo)
+676:        val btn = viewRecord.findViewById<View>(R.id.btn_record)
+677:        halo.animate().scaleX(1f).scaleY(1f).alpha(1f).setDuration(300).start()
+678:        btn.animate().scaleX(1f).scaleY(1f).setDuration(300).start()
+679:    }
+680:
+681:    private fun updateRecordUI() {
+682:        val txtStatus = viewRecord.findViewById<TextView>(R.id.txt_status)
+683:        val circle = viewRecord.findViewById<View>(R.id.rec_circle)
+684:        val txtRec = viewRecord.findViewById<TextView>(R.id.txt_rec)
+685:        
+686:        // stats
+687:        val resHeight = settingsRepository.resolutionHeight
+688:        val badgeRes = when (resHeight) {
+689:            720 -> "HD"
+690:            1080 -> "FHD"
+691:            1440 -> "QHD"
+692:            else -> "FHD"
+693:        }
+694:        viewRecord.findViewById<TextView>(R.id.stat_res).text = "${resHeight}p"
+695:        viewRecord.findViewById<TextView>(R.id.stat_res_badge).text = badgeRes
+696:
+697:        val frameRate = settingsRepository.frameRate
+698:        viewRecord.findViewById<TextView>(R.id.stat_fps).text = "$frameRate"
+699:        viewRecord.findViewById<TextView>(R.id.stat_fps_badge).text = "FPS"
+700:
+701:        val bitrate = settingsRepository.videoBitrate
+702:        val bitMbps = bitrate / 1000000
+703:        val badgeBit = when (bitMbps) {
+704:            5 -> "LOW"
+705:            8 -> "MED"
+706:            12 -> "HIGH"
+707:            16 -> "ULTRA"
+708:            else -> "HIGH"
+709:        }
+710:        viewRecord.findViewById<TextView>(R.id.stat_bit).text = "$bitMbps Mbps"
+711:        viewRecord.findViewById<TextView>(R.id.stat_bit_badge).text = badgeBit
+712:
+713:        val statsContainer = viewRecord.findViewById<LinearLayout>(R.id.stats_row_container)
+714:
+715:        if (RecordingManager.isRecording) {
+716:            handler.removeCallbacks(liveTimerRunnable)
+717:            handler.post(liveTimerRunnable)
+718:            txtRec?.text = "STOP"
+719:            startPulseAnimation()
+720:            
+721:            for (i in 0 until statsContainer.childCount) {
+722:                val child = statsContainer.getChildAt(i)
+723:                child.animate()
+724:                    .alpha(0f)
+725:                    .translationY(30f)
+726:                    .setStartDelay((i * 100).toLong())
+727:                    .setDuration(300)
+728:                    .start()
+729:            }
+730:        } else {
+731:            handler.removeCallbacks(liveTimerRunnable)
+732:            txtStatus.text = "✦ Tap the button to start recording"
+733:            txtRec?.text = "REC"
+734:            stopPulseAnimation()
+735:            
+736:            for (i in 0 until statsContainer.childCount) {
+737:                val child = statsContainer.getChildAt(i)
+738:                child.translationY = 30f
+739:                child.animate()
+740:                    .alpha(1f)
+741:                    .translationY(0f)
+742:                    .setStartDelay((i * 200).toLong())
+743:                    .setDuration(500)
+744:                    .setInterpolator(android.view.animation.OvershootInterpolator())
+745:                    .start()
+746:            }
+747:        }
+748:    }
+749:    
+750:    private fun updateSettingsUI() {
+751:        val themeString = when(settingsRepository.themeMode) {
+752:            1 -> "Light Theme"
+753:            2 -> "Dark Theme"
+754:            else -> "System Default"
+755:        }
+756:        viewSettings.findViewById<TextView>(R.id.val_theme)?.text = themeString
+757:
+758:        val cdLength = settingsRepository.countdownDuration
+759:        viewSettings.findViewById<TextView>(R.id.val_countdown)?.text = if (cdLength == 0) "Off" else "${cdLength}s"
+760:
+761:        val resString = when(settingsRepository.resolutionHeight) {
+762:            720 -> "720p HD"
+763:            1080 -> "1080p HD"
+764:            1440 -> "1440p HD"
+765:            else -> "${settingsRepository.resolutionHeight}p (FHD)"
+766:        }
+767:        viewSettings.findViewById<TextView>(R.id.val_resolution).text = resString
+768:        viewSettings.findViewById<TextView>(R.id.val_fps).text = "${settingsRepository.frameRate} FPS"
+769:        viewSettings.findViewById<TextView>(R.id.val_bitrate).text = "${settingsRepository.videoBitrate / 1000000} Mbps"
+770:
+771:        val encoderString = if (settingsRepository.videoEncoder == "H265") "H.265 / HEVC" else "H.264 / AVC"
+772:        viewSettings.findViewById<TextView>(R.id.val_encoder)?.text = encoderString
+773:        
+774:        val encoderRow = viewSettings.findViewById<LinearLayout>(R.id.row_encoder)
+775:        val encoderDesc = encoderRow?.getChildAt(1) as? TextView
+776:        if (settingsRepository.videoEncoder == "H265") {
+777:            encoderDesc?.text = "HEVC reduces file size but may not be compatible with older devices."
+778:        } else {
+779:            encoderDesc?.text = "H.264 is highly compatible with most standard video players."
+780:        }
+781:
+782:        val mbSize = settingsRepository.maxFileSize / (1024 * 1024)
+783:        val limitString = if (mbSize <= 0) "No Limit" else if (mbSize >= 1024 && mbSize % 1024 == 0L) "${mbSize / 1024} GB" else "$mbSize MB"
+784:        viewSettings.findViewById<TextView>(R.id.val_max_file_size)?.text = limitString
+785:
+786:        val source = settingsRepository.audioSourceMode
+787:        viewSettings.findViewById<Switch>(R.id.switch_mic).setOnCheckedChangeListener(null)
+788:        
+789:        viewSettings.findViewById<Switch>(R.id.switch_mic).isChecked = (source == 1 || source == 3)
+790:
+791:        val switchShowTouches = viewSettings.findViewById<Switch>(R.id.switch_show_touches)
+792:        switchShowTouches?.setOnCheckedChangeListener(null)
+793:        switchShowTouches?.isChecked = settingsRepository.showTouches
+794:        
+795:        val isNightMode = (resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+796:        if (isNightMode) {
+797:            viewSettings.setBackgroundColor(android.graphics.Color.parseColor("#0A0A14"))
+798:            val settingsCards = arrayOf(R.id.row_theme, R.id.row_resolution, R.id.row_fps, R.id.row_countdown, R.id.row_bitrate, R.id.row_encoder, R.id.row_max_file_size, R.id.row_format, R.id.row_export_code, R.id.row_reset_defaults)
+799:            val cardColor = android.graphics.Color.parseColor("#1C1C1E")
+800:            for (id in settingsCards) {
+801:                viewSettings.findViewById<View>(id)?.backgroundTintList = android.content.res.ColorStateList.valueOf(cardColor)
+802:            }
+803:            
+804:            // Audio & Touches container
+805:            (viewSettings.findViewById<View>(R.id.row_mic)?.parent as? View)?.backgroundTintList = android.content.res.ColorStateList.valueOf(cardColor)
+806:        } else {
+807:            viewSettings.setBackgroundColor(android.graphics.Color.parseColor("#F8FAFC"))
+808:            val settingsCards = arrayOf(R.id.row_theme, R.id.row_resolution, R.id.row_fps, R.id.row_countdown, R.id.row_bitrate, R.id.row_encoder, R.id.row_max_file_size, R.id.row_format, R.id.row_export_code, R.id.row_reset_defaults)
+809:            val cardColor = android.graphics.Color.parseColor("#FFFFFF")
+810:            for (id in settingsCards) {
+811:                viewSettings.findViewById<View>(id)?.backgroundTintList = android.content.res.ColorStateList.valueOf(cardColor)
+812:            }
+813:            (viewSettings.findViewById<View>(R.id.row_mic)?.parent as? View)?.backgroundTintList = android.content.res.ColorStateList.valueOf(cardColor)
+814:        }
+815:        
+816:        setupSettingsView() // reattach listeners
+817:    }
+818:
+819:    override fun onResume() {
+820:        super.onResume()
+821:        updateRecordUI()
+822:        updateSettingsUI()
+823:    }
+824:
+825:    override fun onNewIntent(intent: Intent) {
+826:        super.onNewIntent(intent)
+827:        setIntent(intent)
+828:    }
+829:
+830:    private fun checkPermissionsAndStart() {
+831:        if (isCountingDown) {
+832:            cancelCountdown()
+833:            return
+834:        }
+835:        val permissions = mutableListOf<String>()
+836:        if (settingsRepository.audioSourceMode != 0) {
+837:            if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+838:                permissions.add(Manifest.permission.RECORD_AUDIO)
+839:            }
+840:        }
+841:        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+842:            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+843:                permissions.add(Manifest.permission.POST_NOTIFICATIONS)
+844:            }
+845:        }
+846:        if (permissions.isNotEmpty()) {
+847:            ActivityCompat.requestPermissions(this, permissions.toTypedArray(), PERMISSION_REQ_CODE)
+848:        } else {
+849:            proceedRecording()
+850:        }
+851:    }
+852:
+853:    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+854:        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+855:        if (requestCode == PERMISSION_REQ_CODE) {
+856:            if (grantResults.isNotEmpty() && grantResults.all { it == PackageManager.PERMISSION_GRANTED }) {
+857:                proceedRecording()
+858:            } else {
+859:                android.widget.Toast.makeText(this, "Permissions required to record.", android.widget.Toast.LENGTH_SHORT).show()
+860:            }
+861:        }
+862:    }
+863:
+864:    private fun proceedRecording() {
+865:        if (RecordingManager.isRecording) {
+866:            stopRecording()
+867:        } else {
+868:            val duration = settingsRepository.countdownDuration
+869:            if (duration <= 0) {
+870:                startRecordingFlow()
+871:            } else {
+872:                startCountdown(duration)
+873:            }
+874:        }
+875:    }
+876:
+877:    private var countdownRunnable: Runnable? = null
+878:
+879:    private fun startCountdown(seconds: Int) {
+880:        val txtCountdown = viewRecord.findViewById<TextView>(R.id.txt_countdown)
+881:        txtCountdown.visibility = View.VISIBLE
+882:        isCountingDown = true
+883:        var remaining = seconds
+884:        
+885:        countdownRunnable = object : Runnable {
+886:            override fun run() {
+887:                if (remaining > 0) {
+888:                    txtCountdown.text = remaining.toString()
+889:                    remaining--
+890:                    handler.postDelayed(this, 1000)
+891:                } else {
+892:                    txtCountdown.visibility = View.GONE
+893:                    isCountingDown = false
+894:                    startRecordingFlow()
+895:                }
+896:            }
+897:        }
+898:        handler.post(countdownRunnable!!)
+899:    }
+900:
+901:    private fun cancelCountdown() {
+902:        countdownRunnable?.let { handler.removeCallbacks(it) }
+903:        countdownRunnable = null
+904:        isCountingDown = false
+905:        viewRecord.findViewById<TextView>(R.id.txt_countdown).visibility = View.GONE
+906:    }
+907:
+908:    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+909:        super.onActivityResult(requestCode, resultCode, data)
+910:        if (requestCode == 100 && resultCode == Activity.RESULT_OK) {
+911:            // Delete action was granted by the user, we can try to reload the library
+912:            loadLibrary()
+913:        }
+914:    }
+915:
+916:    private fun shareVideo(file: VideoFile) {
+917:        val intent = Intent(Intent.ACTION_SEND).apply {
+918:            type = "video/*"
+919:            putExtra(Intent.EXTRA_STREAM, file.uri)
+920:            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+921:        }
+922:        startActivity(Intent.createChooser(intent, "Share Video"))
+923:    }
+924:
+925:    private fun deleteVideo(file: VideoFile) {
+926:        AlertDialog.Builder(this)
+927:            .setTitle("Delete Video")
+928:            .setMessage("Are you sure you want to delete this video?")
+929:            .setPositiveButton("Delete") { _, _ ->
+930:                try {
+931:                    contentResolver.delete(file.uri, null, null)
+932:                    loadLibrary()
+933:                } catch (e: SecurityException) {
+934:                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+935:                        val recoverableSecurityException = e as? android.app.RecoverableSecurityException
+936:                        val intentSender = recoverableSecurityException?.userAction?.actionIntent?.intentSender
+937:                        if (intentSender != null) {
+938:                            startIntentSenderForResult(intentSender, 100, null, 0, 0, 0, null)
+939:                        }
+940:                    } else {
+941:                        android.widget.Toast.makeText(this, "Permission denied to delete video", android.widget.Toast.LENGTH_SHORT).show()
+942:                    }
+943:                } catch (e: Exception) {
+944:                    android.widget.Toast.makeText(this, "Failed to delete video", android.widget.Toast.LENGTH_SHORT).show()
+945:                }
+946:            }
+947:            .setNegativeButton("Cancel", null)
+948:            .show()
+949:    }
+950:
+951:    private fun renameVideo(file: VideoFile) {
+952:        val editText = android.widget.EditText(this).apply {
+953:            setText(file.name)
+954:            setSelection(file.name.length)
+955:        }
+956:        AlertDialog.Builder(this)
+957:            .setTitle("Rename Video")
+958:            .setView(editText)
+959:            .setPositiveButton("Rename") { _, _ ->
+960:                val newName = editText.text.toString()
+961:                if (newName.isNotBlank() && newName != file.name) {
+962:                    try {
+963:                        val values = android.content.ContentValues().apply {
+964:                            put(android.provider.MediaStore.Video.Media.DISPLAY_NAME, newName)
+965:                        }
+966:                        contentResolver.update(file.uri, values, null, null)
+967:                        loadLibrary()
+968:                    } catch (e: Exception) {
+969:                        android.widget.Toast.makeText(this, "Failed to rename video", android.widget.Toast.LENGTH_SHORT).show()
+970:                    }
+971:                }
+972:            }
+973:            .setNegativeButton("Cancel", null)
+974:            .show()
+975:    }
+976:
+977:    private fun startRecordingFlow() {
+978:        val intent = projectionManager.createScreenCaptureIntent()
+979:        captureIntentLauncher.launch(intent)
+980:    }
+981:
+982:    private fun stopRecording() {
+983:        val serviceIntent = Intent(this, RecordingService::class.java).apply {
+984:            action = RecordingService.ACTION_STOP
+985:        }
+986:        startService(serviceIntent)
+987:        updateRecordUI()
+988:        android.widget.Toast.makeText(this, "Recording finished", android.widget.Toast.LENGTH_LONG).show()
+989:    }
+990:}
+991:
+992:data class VideoFile(val uri: Uri, val name: String, val size: Long, val thumbnail: android.graphics.Bitmap?)
+993:
+994:class LibraryAdapter(
+995:    private val files: List<VideoFile>,
+996:    private val onClick: (VideoFile) -> Unit,
+997:    private val onLongClick: (VideoFile) -> Unit,
+998:    private val onDelete: (VideoFile) -> Unit,
+999:    private val onRename: (VideoFile) -> Unit,
+1000:    private val onShare: (VideoFile) -> Unit
+1001:) : androidx.recyclerview.widget.RecyclerView.Adapter<LibraryAdapter.ViewHolder>() {
+1002:
+1003:    val selectedFiles = mutableSetOf<VideoFile>()
+1004:    var isSelectionMode = false
+1005:
+1006:    fun toggleSelection(file: VideoFile) {
+1007:        if (selectedFiles.contains(file)) {
+1008:            selectedFiles.remove(file)
+1009:            if (selectedFiles.isEmpty()) {
+1010:                isSelectionMode = false
+1011:            }
+1012:        } else {
+1013:            selectedFiles.add(file)
+1014:            isSelectionMode = true
+1015:        }
+1016:        notifyDataSetChanged()
+1017:    }
+1018:
+1019:    fun clearSelection() {
+1020:        selectedFiles.clear()
+1021:        isSelectionMode = false
+1022:        notifyDataSetChanged()
+1023:    }
+1024:
+1025:    class ViewHolder(view: View) : androidx.recyclerview.widget.RecyclerView.ViewHolder(view) {
+1026:        val thumbnail: ImageView = view.findViewById(R.id.img_thumbnail)
+1027:        val imgCheck: ImageView? = view.findViewById(R.id.img_check)
+1028:        val title: TextView = view.findViewById(R.id.txt_title)
+1029:        val subtitle: TextView = view.findViewById(R.id.txt_subtitle)
+1030:        val btnDelete: ImageView = view.findViewById(R.id.btn_delete)
+1031:        val btnMore: ImageView = view.findViewById(R.id.btn_more)
+1032:    }
+1033:
+1034:    override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int): ViewHolder {
+1035:        val view = android.view.LayoutInflater.from(parent.context)
+1036:            .inflate(R.layout.item_video, parent, false)
+1037:        return ViewHolder(view)
+1038:    }
+1039:
+1040:    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+1041:        val file = files[position]
+1042:        holder.title.text = file.name
+1043:        holder.subtitle.text = "${file.size / (1024 * 1024)} MB"
+1044:        
+1045:        if (file.thumbnail != null) {
+1046:            holder.thumbnail.setImageBitmap(file.thumbnail)
+1047:            holder.thumbnail.setPadding(0, 0, 0, 0)
+1048:        } else {
+1049:            holder.thumbnail.setImageResource(android.R.drawable.ic_media_play)
+1050:            holder.thumbnail.setPadding(8, 8, 8, 8)
+1051:        }
+1052:        
+1053:        val isSelected = selectedFiles.contains(file)
+1054:        if (isSelectionMode) {
+1055:            holder.btnDelete.visibility = View.GONE
+1056:            holder.btnMore.visibility = View.GONE
+1057:            holder.imgCheck?.visibility = View.VISIBLE
+1058:            holder.imgCheck?.setImageResource(if (isSelected) android.R.drawable.checkbox_on_background else android.R.drawable.checkbox_off_background)
+1059:            val isNightMode = (holder.itemView.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+1060:            val tintColor = if (isSelected) {
+1061:                if (isNightMode) android.graphics.Color.parseColor("#1C1C3E") else android.graphics.Color.parseColor("#E0E7FF")
+1062:            } else {
+1063:                if (isNightMode) android.graphics.Color.parseColor("#1C1C1E") else android.graphics.Color.parseColor("#FFFFFF")
+1064:            }
+1065:            holder.itemView.backgroundTintList = android.content.res.ColorStateList.valueOf(tintColor)
+1066:        } else {
+1067:            holder.btnDelete.visibility = View.VISIBLE
+1068:            holder.btnMore.visibility = View.VISIBLE
+1069:            holder.imgCheck?.visibility = View.GONE
+1070:            val isNightMode = (holder.itemView.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK) == android.content.res.Configuration.UI_MODE_NIGHT_YES
+1071:            holder.itemView.backgroundTintList = android.content.res.ColorStateList.valueOf(if (isNightMode) android.graphics.Color.parseColor("#1C1C1E") else android.graphics.Color.parseColor("#FFFFFF"))
+1072:        }
+1073:
+1074:        holder.itemView.setOnClickListener {
+1075:            if (isSelectionMode) {
+1076:                toggleSelection(file)
+1077:                onClick(file) // we'll handle selection inside the activity as well to update UI
+1078:            } else {
+1079:                onClick(file)
+1080:            }
+1081:        }
+1082:        
+1083:        holder.itemView.setOnLongClickListener {
+1084:            onLongClick(file)
+1085:            true
+1086:        }
+1087:        
+1088:        holder.btnDelete.setOnClickListener { onDelete(file) }
+1089:        
+1090:        holder.btnMore.setOnClickListener { view ->
+1091:            val popup = android.widget.PopupMenu(view.context, holder.btnMore)
+1092:            popup.menu.add(android.view.Menu.NONE, 1, 1, "Rename")
+1093:            popup.menu.add(android.view.Menu.NONE, 2, 2, "Share")
+1094:            popup.setOnMenuItemClickListener { item ->
+1095:                when (item.itemId) {
+1096:                    1 -> onRename(file)
+1097:                    2 -> onShare(file)
+1098:                }
+1099:                true
+1100:            }
+1101:            popup.show()
+1102:        }
+1103:    }
+1104:
+1105:    override fun getItemCount() = files.size
+1106:}
+1107:

@@ -576,7 +576,7 @@ class MainActivity : AppCompatActivity() {
         
         val adapter = LibraryAdapter(
             files,
-            onClick = { file ->
+            { file ->
                 val currentAdapter = recyclerView.adapter as LibraryAdapter
                 if (currentAdapter.isSelectionMode) {
                     updateSelectionUI(currentAdapter)
@@ -587,20 +587,20 @@ class MainActivity : AppCompatActivity() {
                     startActivity(intent)
                 }
             },
-            onLongClick = { file ->
+            { file ->
                 val currentAdapter = recyclerView.adapter as LibraryAdapter
                 if (!currentAdapter.isSelectionMode) {
                     currentAdapter.toggleSelection(file)
                     updateSelectionUI(currentAdapter)
                 }
             },
-            onDelete = { file ->
+            { file ->
                 deleteVideo(file)
             },
-            onRename = { file ->
+            { file ->
                 renameVideo(file)
             },
-            onShare = { file ->
+            { file ->
                 shareVideo(file)
             }
         )
