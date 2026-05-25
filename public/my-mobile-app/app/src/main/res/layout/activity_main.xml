@@ -4,7 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#0A0A0A">
+    android:background="@color/bg_primary">
 
     <FrameLayout
         android:id="@+id/fragment_container"
@@ -19,7 +19,7 @@
         android:id="@+id/tab_bar_divider"
         android:layout_width="0dp"
         android:layout_height="1dp"
-        android:background="#1C1C1E"
+        android:background="@color/card_border"
         app:layout_constraintBottom_toTopOf="@id/tab_bar"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
@@ -29,7 +29,7 @@
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:background="#050505"
+        android:background="@color/bg_primary"
         android:paddingVertical="12dp"
         android:elevation="24dp"
         android:outlineSpotShadowColor="#00000000"
@@ -50,14 +50,14 @@
                 android:layout_width="24dp"
                 android:layout_height="24dp"
                 android:src="@drawable/ic_record_circle"
-                app:tint="#A855F7" />
+                app:tint="@color/tab_active" />
             <TextView
                 android:id="@+id/text_record"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Record"
                 android:textSize="10sp"
-                android:textColor="#A855F7"
+                android:textColor="@color/tab_active"
                 android:textStyle="bold"
                 android:layout_marginTop="4dp" />
         </LinearLayout>
@@ -75,14 +75,14 @@
                 android:layout_width="24dp"
                 android:layout_height="24dp"
                 android:src="@android:drawable/ic_media_play"
-                app:tint="#8E8E93" />
+                app:tint="@color/tab_inactive" />
             <TextView
                 android:id="@+id/text_library"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Videos"
                 android:textSize="10sp"
-                android:textColor="#8E8E93"
+                android:textColor="@color/tab_inactive"
                 android:layout_marginTop="4dp" />
         </LinearLayout>
 
@@ -99,14 +99,14 @@
                 android:layout_width="24dp"
                 android:layout_height="24dp"
                 android:src="@android:drawable/ic_menu_preferences"
-                app:tint="#8E8E93" />
+                app:tint="@color/tab_inactive" />
             <TextView
                 android:id="@+id/text_settings"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="Settings"
                 android:textSize="10sp"
-                android:textColor="#8E8E93"
+                android:textColor="@color/tab_inactive"
                 android:layout_marginTop="4dp" />
         </LinearLayout>
     </LinearLayout>

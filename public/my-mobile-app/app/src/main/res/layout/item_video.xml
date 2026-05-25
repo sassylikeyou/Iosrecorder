@@ -17,7 +17,7 @@
         android:layout_height="45dp"
         android:src="@android:drawable/ic_media_play"
         android:scaleType="centerCrop"
-        android:background="#208B5CF6"
+        android:background="#20673AB7"
         android:layout_marginEnd="16dp" />
 
     <ImageView
@@ -26,7 +26,7 @@
         android:layout_height="24dp"
         android:src="@android:drawable/checkbox_on_background"
         android:visibility="gone"
-        app:tint="#8B5CF6"
+        app:tint="@color/tab_active"
         android:layout_marginEnd="16dp" />
 
     <LinearLayout
@@ -42,7 +42,7 @@
             android:text="Video_2026.mp4"
             android:ellipsize="middle"
             android:singleLine="true"
-            android:textColor="#000000"
+            android:textColor="@color/text_high_emphasis"
             android:textSize="14sp"
             android:textStyle="bold" />
 
@@ -51,7 +51,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="15 MB"
-            android:textColor="#8E8E93"
+            android:textColor="@color/text_subtext"
             android:textSize="12sp"
             android:layout_marginTop="2dp" />
 
@@ -74,6 +74,6 @@
         android:src="@android:drawable/ic_menu_more"
         android:background="?selectableItemBackgroundBorderless"
         android:padding="8dp"
-        app:tint="#8E8E93" />
+        app:tint="@color/tab_inactive" />
 
 </LinearLayout>

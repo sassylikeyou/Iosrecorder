@@ -8,4 +8,13 @@
     <color name="blue_ios">#0A84FF</color>
     <color name="overlay_white">#1AFFFFFF</color>
     <color name="transparent">#00000000</color>
+
+    <!-- Light Theme Semantic Colors -->
+    <color name="bg_primary">#FFFFFF</color>
+    <color name="surface_card">#F8F9FA</color>
+    <color name="text_high_emphasis">#1A1A1A</color>
+    <color name="text_subtext">#6C757D</color>
+    <color name="tab_active">#673AB7</color>
+    <color name="tab_inactive">#BDBDBD</color>
+    <color name="card_border">#E0E0E0</color>
 </resources>

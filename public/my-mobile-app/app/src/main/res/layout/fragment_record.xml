@@ -3,7 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#000000">
+    android:background="@color/bg_primary">
 
     <!-- Top Text -->
     <TextView
@@ -11,7 +11,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Screen Recorder"
-        android:textColor="#FFFFFF"
+        android:textColor="@color/text_high_emphasis"
         android:textSize="32sp"
         android:textStyle="bold"
         android:layout_marginStart="24dp"
@@ -24,7 +24,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Record your screen in high quality"
-        android:textColor="#A1A1AA"
+        android:textColor="@color/text_subtext"
         android:textSize="14sp"
         android:layout_marginStart="24dp"
         android:layout_marginTop="8dp"
@@ -85,7 +85,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="✦ Tap the button to start recording"
-        android:textColor="#A1A1AA"
+        android:textColor="@color/text_subtext"
         android:textSize="14sp"
         android:layout_marginBottom="32dp"
         app:layout_constraintBottom_toTopOf="@id/stats_row_container"
@@ -102,7 +102,7 @@
         android:layout_marginBottom="40dp"
         android:background="@drawable/bg_stats_dark"
         android:paddingVertical="16dp"
-        android:paddingHorizontal="8dp"
+        android:paddingHorizontal="16dp"
         android:elevation="0dp"
         android:outlineSpotShadowColor="#00000000"
         app:layout_constraintBottom_toBottomOf="parent">
@@ -118,11 +118,11 @@
                 android:layout_width="24dp"
                 android:layout_height="24dp"
                 android:src="@android:drawable/ic_menu_crop"
-                app:tint="#8B5CF6"
+                app:tint="@color/tab_active"
                 android:layout_marginBottom="8dp"/>
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Resolution" android:textColor="#A1A1AA" android:textSize="12sp" />
-            <TextView android:id="@+id/stat_res" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="1080p" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold" android:layout_marginTop="4dp"/>
-            <TextView android:id="@+id/stat_res_badge" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="FHD" android:textColor="#8B5CF6" android:background="#208B5CF6" android:paddingHorizontal="6dp" android:paddingVertical="2dp" android:textSize="10sp" android:layout_marginTop="4dp" android:textStyle="bold"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Resolution" android:textColor="@color/text_subtext" android:textSize="12sp" />
+            <TextView android:id="@+id/stat_res" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="1080p" android:textColor="@color/text_high_emphasis" android:textSize="14sp" android:textStyle="bold" android:layout_marginTop="4dp"/>
+            <TextView android:id="@+id/stat_res_badge" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="FHD" android:textColor="@color/tab_active" android:background="#20673AB7" android:paddingHorizontal="6dp" android:paddingVertical="2dp" android:textSize="10sp" android:layout_marginTop="4dp" android:textStyle="bold"/>
         </LinearLayout>
 
         <!-- FPS -->
@@ -138,8 +138,8 @@
                 android:src="@android:drawable/ic_menu_recent_history"
                 app:tint="#3B82F6"
                 android:layout_marginBottom="8dp"/>
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="FPS" android:textColor="#A1A1AA" android:textSize="12sp" />
-            <TextView android:id="@+id/stat_fps" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="60" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold" android:layout_marginTop="4dp"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="FPS" android:textColor="@color/text_subtext" android:textSize="12sp" />
+            <TextView android:id="@+id/stat_fps" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="60" android:textColor="@color/text_high_emphasis" android:textSize="14sp" android:textStyle="bold" android:layout_marginTop="4dp"/>
             <TextView android:id="@+id/stat_fps_badge" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="FPS" android:textColor="#3B82F6" android:background="#203B82F6" android:paddingHorizontal="6dp" android:paddingVertical="2dp" android:textSize="10sp" android:layout_marginTop="4dp" android:textStyle="bold"/>
         </LinearLayout>
 
@@ -156,8 +156,8 @@
                 android:src="@android:drawable/ic_menu_sort_by_size"
                 app:tint="#F97316"
                 android:layout_marginBottom="8dp"/>
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Bitrate" android:textColor="#A1A1AA" android:textSize="12sp" />
-            <TextView android:id="@+id/stat_bit" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="12 Mbps" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold" android:layout_marginTop="4dp"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Bitrate" android:textColor="@color/text_subtext" android:textSize="12sp" />
+            <TextView android:id="@+id/stat_bit" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="12 Mbps" android:textColor="@color/text_high_emphasis" android:textSize="14sp" android:textStyle="bold" android:layout_marginTop="4dp"/>
             <TextView android:id="@+id/stat_bit_badge" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="HIGH" android:textColor="#F97316" android:background="#20F97316" android:paddingHorizontal="6dp" android:paddingVertical="2dp" android:textSize="10sp" android:layout_marginTop="4dp" android:textStyle="bold"/>
         </LinearLayout>
     </LinearLayout>
