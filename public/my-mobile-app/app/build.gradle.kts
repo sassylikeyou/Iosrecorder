@@ -8,7 +8,7 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.example.screenrecorder"
+        applicationId = "com.example.screenrecorder.dev"
         minSdk = 26
         targetSdk = 34
         versionCode = 1
@@ -17,13 +17,10 @@ android {
 
     signingConfigs {
         getByName("debug") {
-            val keystoreFile = file(System.getProperty("user.home") + "/.android/debug.keystore")
-            if (keystoreFile.exists()) {
-                storeFile = keystoreFile
-                storePassword = "android"
-                keyAlias = "androiddebugkey"
-                keyPassword = "android"
-            }
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
         }
     }
 
